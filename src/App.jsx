@@ -3,6 +3,7 @@ import Home from './pages/Home';
 import RoadmapPage from './pages/RoadmapPage';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
+import Landing from './pages/Landing';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -11,13 +12,13 @@ function App() {
 
   const [view, setView] = useState(() => {
     const auth = localStorage.getItem('isAuthenticated') === 'true';
-    return { page: auth ? 'home' : 'login', courseName: null };
+    return { page: auth ? 'home' : 'landing', courseName: null };
   });
 
   const handleNavigate = (page, courseName = null) => {
     const auth = localStorage.getItem('isAuthenticated') === 'true';
-    if (!auth && page !== 'login' && page !== 'signup') {
-      setView({ page: 'login', courseName: null });
+    if (!auth && page !== 'login' && page !== 'signup' && page !== 'landing') {
+      setView({ page: 'landing', courseName: null });
     } else {
       setView({ page, courseName });
     }
@@ -33,7 +34,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
-    handleNavigate('login');
+    handleNavigate('landing');
   };
 
   if (view.page === 'roadmap') {
@@ -42,6 +43,16 @@ function App() {
         courseName={view.courseName} 
         onBack={() => handleNavigate('home')} 
         onNavigate={handleNavigate}
+        isAuthenticated={isAuthenticated}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
+  if (view.page === 'landing') {
+    return (
+      <Landing 
+        onNavigate={handleNavigate} 
         isAuthenticated={isAuthenticated}
         onLogout={handleLogout}
       />

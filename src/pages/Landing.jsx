@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
-import LearningPaths from '../components/LearningPaths/LearningPaths';
-import PopularTracks from '../components/PopularTracks/PopularTracks';
-import Gamification from '../components/Gamification/Gamification';
+import Hero from '../components/Hero/Hero';
+import LearningProcess from '../components/LearningProcess/LearningProcess';
+import CTA from '../components/CTA/CTA';
 import Footer from '../components/Footer/Footer';
 
-const Home = ({ onNavigate, isAuthenticated, onLogout }) => {
+const Landing = ({ onNavigate, isAuthenticated, onLogout }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -22,18 +22,14 @@ const Home = ({ onNavigate, isAuthenticated, onLogout }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleCardClick = (courseName) => {
-    onNavigate('roadmap', courseName);
-  };
-
   return (
     <div className="min-h-screen flex flex-col bg-background dark:bg-slate-950 font-sans transition-colors duration-300">
       <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
       
-      <main className="flex-grow pt-24 pb-12">
-        <LearningPaths onCardClick={handleCardClick} />
-        <PopularTracks onCardClick={handleCardClick} />
-        <Gamification />
+      <main className="flex-grow">
+        <Hero onNavigate={onNavigate} />
+        <LearningProcess />
+        <CTA onNavigate={onNavigate} />
       </main>
 
       <Footer />
@@ -52,4 +48,4 @@ const Home = ({ onNavigate, isAuthenticated, onLogout }) => {
   );
 };
 
-export default Home;
+export default Landing;

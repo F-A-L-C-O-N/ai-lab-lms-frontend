@@ -1,7 +1,7 @@
 import React from 'react';
 import { Play, Code, CheckCircle, Zap } from 'lucide-react';
 
-const Hero = () => {
+const Hero = ({ onNavigate }) => {
   return (
     <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
       {/* Background decoration */}
@@ -30,7 +30,10 @@ const Hero = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
-              <button className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-[0_6px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] hover:translate-y-[2px] active:translate-y-[6px] active:shadow-none transition-all">
+              <button 
+                onClick={() => onNavigate && onNavigate('signup')}
+                className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-[0_6px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] hover:translate-y-[2px] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
+              >
                 START LEARNING NOW
               </button>
               

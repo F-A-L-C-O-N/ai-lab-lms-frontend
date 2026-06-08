@@ -46,7 +46,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
           {/* Logo */}
           <div className="flex items-center">
             <button 
-              onClick={() => onNavigate && onNavigate('home')} 
+              onClick={() => onNavigate && onNavigate(isAuthenticated ? 'home' : 'landing')} 
               className="text-primary dark:text-indigo-400 font-bold text-2xl tracking-tighter cursor-pointer bg-transparent border-none p-0 focus:outline-none"
             >
               LearnHub
