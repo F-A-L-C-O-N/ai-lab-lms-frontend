@@ -2,12 +2,12 @@ import React from 'react';
 import { Brain, Cpu, Database, Eye, MessageSquare, Sparkles, Lock, Flame, Check, Calendar } from 'lucide-react';
 
 const paths = [
-  { id: 1, name: 'Machine Learning Foundations', icon: Database, color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400', level: 12, progress: 65 },
-  { id: 2, name: 'Deep Learning & Neural Nets', icon: Brain, color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400', level: 8, progress: 40 },
-  { id: 3, name: 'Natural Language Processing', icon: MessageSquare, color: 'bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400', level: 3, progress: 15 },
-  { id: 4, name: 'Computer Vision', icon: Eye, color: 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400', level: 0, progress: 0, locked: true },
-  { id: 5, name: 'Reinforcement Learning', icon: Cpu, color: 'bg-cyan-100 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400', level: 0, progress: 0, locked: true },
-  { id: 6, name: 'Generative AI & LLMs', icon: Sparkles, color: 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400', level: 0, progress: 0, locked: true },
+  { id: 1, name: 'Machine Learning Foundations', icon: Database, color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400', progress: 65 },
+  { id: 2, name: 'Deep Learning & Neural Nets', icon: Brain, color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400', progress: 40 },
+  { id: 3, name: 'Natural Language Processing', icon: MessageSquare, color: 'bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400', progress: 15 },
+  { id: 4, name: 'Computer Vision', icon: Eye, color: 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400', progress: 0 },
+  { id: 5, name: 'Reinforcement Learning', icon: Cpu, color: 'bg-cyan-100 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400', progress: 0 },
+  { id: 6, name: 'Generative AI & LLMs', icon: Sparkles, color: 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400', progress: 0 },
 ];
 
 const weeklyProgress = [
@@ -114,7 +114,7 @@ const LearningPaths = ({ onCardClick }) => {
               {!path.locked ? (
                 <div>
                   <div className="flex justify-between items-center text-sm font-bold text-text-secondary dark:text-slate-400 mb-2">
-                    <span>Level {path.level}</span>
+                    <span>Progress</span>
                     <span>{path.progress}%</span>
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
@@ -125,7 +125,7 @@ const LearningPaths = ({ onCardClick }) => {
                   </div>
                 </div>
               ) : (
-                <p className="text-sm font-bold text-slate-400 dark:text-slate-500">Unlock at Level 5</p>
+                <p className="text-sm font-bold text-slate-400 dark:text-slate-500">Locked</p>
               )}
             </div>
           ))}
