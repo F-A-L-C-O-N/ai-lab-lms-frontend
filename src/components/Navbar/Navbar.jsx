@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Moon, Sun } from 'lucide-react';
 
-const Navbar = () => {
+const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -45,9 +45,12 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <a href="#" className="text-primary dark:text-indigo-400 font-bold text-2xl tracking-tighter">
+            <button 
+              onClick={() => onNavigate && onNavigate('home')} 
+              className="text-primary dark:text-indigo-400 font-bold text-2xl tracking-tighter cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+            >
               LearnHub
-            </a>
+            </button>
           </div>
 
           {/* Desktop Navigation */}
@@ -64,18 +67,39 @@ const Navbar = () => {
           </nav>
 
           {/* Actions (Desktop) */}
-          <div className="hidden md:flex items-center space-x-4">
+          <div className="hidden md:flex items-center space-x-6">
             <button
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="p-2 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 hover:bg-border/50 dark:hover:bg-slate-800 rounded-full transition-colors"
+              className="p-2 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 hover:bg-border/50 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
               aria-label="Toggle Dark Mode"
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
             
-            <button className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-transform hover:-translate-y-0.5 active:translate-y-0 shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none">
-              GET STARTED
-            </button>
+            {isAuthenticated ? (
+              <button 
+                onClick={onLogout}
+                className="text-text-secondary dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 font-bold text-sm tracking-widest transition-colors duration-200 cursor-pointer"
+              >
+                LOG OUT
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={() => onNavigate && onNavigate('login')}
+                  className="text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 font-bold text-sm tracking-widest transition-colors duration-200 cursor-pointer"
+                >
+                  LOG IN
+                </button>
+
+                <button 
+                  onClick={() => onNavigate && onNavigate('signup')}
+                  className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-transform hover:-translate-y-0.5 active:translate-y-0 shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none cursor-pointer"
+                >
+                  GET STARTED
+                </button>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -114,9 +138,39 @@ const Navbar = () => {
             
             <div className="h-px bg-border dark:bg-slate-800 my-2"></div>
 
-            <button className="w-full mt-4 bg-primary text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] active:shadow-none active:translate-y-1 transition-all">
-              GET STARTED
-            </button>
+            {isAuthenticated ? (
+              <button 
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  onLogout && onLogout();
+                }}
+                className="w-full text-left px-3 py-3 text-base font-bold text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+              >
+                LOG OUT
+              </button>
+            ) : (
+              <>
+                <button 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onNavigate && onNavigate('login');
+                  }}
+                  className="w-full text-left px-3 py-3 text-base font-bold text-text-secondary dark:text-slate-400 hover:text-primary dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer"
+                >
+                  LOG IN
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onNavigate && onNavigate('signup');
+                  }}
+                  className="w-full mt-4 bg-primary text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer"
+                >
+                  GET STARTED
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

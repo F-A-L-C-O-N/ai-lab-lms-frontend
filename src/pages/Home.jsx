@@ -9,7 +9,7 @@ import LearningProcess from '../components/LearningProcess/LearningProcess';
 import CTA from '../components/CTA/CTA';
 import Footer from '../components/Footer/Footer';
 
-const Home = ({ onNavigate }) => {
+const Home = ({ onNavigate, isAuthenticated, onLogout }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ const Home = ({ onNavigate }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background dark:bg-slate-950 font-sans transition-colors duration-300">
-      <Navbar />
+      <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
       
       <main className="flex-grow">
         <Hero />

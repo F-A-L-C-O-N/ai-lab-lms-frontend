@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { roadmapData } from '../data/roadmapData';
 
-const RoadmapPage = ({ courseName, onBack }) => {
+const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout }) => {
   const steps = roadmapData[courseName] || [];
 
   // Local Storage Progress Persistence
@@ -286,7 +286,7 @@ const RoadmapPage = ({ courseName, onBack }) => {
       {/* 1. ROADMAP VIEW (DASHBOARD) */}
       {viewMode === 'roadmap' && (
         <>
-          <Navbar />
+          <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
           
           <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
             
