@@ -5,7 +5,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    return localStorage.getItem('theme') === 'dark' || 
+    return localStorage.getItem('theme') === 'dark' ||
       (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
 
@@ -27,44 +27,26 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
     }
   }, [isDarkMode]);
 
-  const navLinks = [
-    { name: 'LEARN', href: '#learn' },
-    { name: 'QUESTS', href: '#quests' },
-    { name: 'PROFILE', href: '#profile' },
-  ];
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled
           ? 'bg-white/80 dark:bg-slate-900/80 backdrop-blur-md shadow-sm border-b border-border dark:border-slate-800'
           : 'bg-background dark:bg-slate-950 border-b border-border dark:border-slate-900'
-      }`}
+        }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <button 
-              onClick={() => onNavigate && onNavigate(isAuthenticated ? 'home' : 'landing')} 
+            <button
+              onClick={() => onNavigate && onNavigate(isAuthenticated ? 'home' : 'landing')}
               className="text-primary dark:text-indigo-400 font-bold text-2xl tracking-tighter cursor-pointer bg-transparent border-none p-0 focus:outline-none"
             >
-              LearnHub
+              AI Lab Learning Portal
             </button>
           </div>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex space-x-6 items-center">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 font-bold text-sm tracking-widest transition-colors duration-200"
-              >
-                {link.name}
-              </a>
-            ))}
-          </nav>
 
           {/* Actions (Desktop) */}
           <div className="hidden md:flex items-center space-x-6">
@@ -75,9 +57,9 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
             >
               {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
             </button>
-            
+
             {isAuthenticated ? (
-              <button 
+              <button
                 onClick={onLogout}
                 className="text-text-secondary dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 font-bold text-sm tracking-widest transition-colors duration-200 cursor-pointer"
               >
@@ -85,14 +67,14 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
               </button>
             ) : (
               <>
-                <button 
+                <button
                   onClick={() => onNavigate && onNavigate('login')}
                   className="text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 font-bold text-sm tracking-widest transition-colors duration-200 cursor-pointer"
                 >
                   LOG IN
                 </button>
 
-                <button 
+                <button
                   onClick={() => onNavigate && onNavigate('signup')}
                   className="bg-primary hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-bold transition-transform hover:-translate-y-0.5 active:translate-y-0 shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none cursor-pointer"
                 >
@@ -124,22 +106,11 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white dark:bg-slate-900 border-t border-border dark:border-slate-800 shadow-lg absolute w-full left-0">
-          <div className="px-4 pt-2 pb-6 space-y-1 sm:px-3 flex flex-col">
-            {navLinks.map((link) => (
-              <a
-                key={link.name}
-                href={link.href}
-                className="block px-3 py-3 text-base font-bold text-text-secondary dark:text-slate-400 hover:text-primary dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded-md transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                {link.name}
-              </a>
-            ))}
-            
+
             <div className="h-px bg-border dark:bg-slate-800 my-2"></div>
 
             {isAuthenticated ? (
-              <button 
+              <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
                   onLogout && onLogout();
@@ -150,7 +121,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
               </button>
             ) : (
               <>
-                <button 
+                <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     onNavigate && onNavigate('login');
@@ -160,7 +131,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
                   LOG IN
                 </button>
 
-                <button 
+                <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     onNavigate && onNavigate('signup');
@@ -172,7 +143,6 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
               </>
             )}
           </div>
-        </div>
       )}
     </header>
   );

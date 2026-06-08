@@ -5,7 +5,7 @@ const steps = [
   {
     id: 1,
     title: 'Bite-sized Lessons',
-    description: 'Learn concepts in 3 minutes or less. Perfect for your commute or coffee break.',
+    description: 'Perfect for your commute or coffee break.',
     icon: BookOpen,
     color: 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
   },
@@ -25,8 +25,8 @@ const steps = [
   },
   {
     id: 4,
-    title: 'Earn Streaks & XP',
-    description: 'Level up, unlock achievements, and compete on the global leaderboard.',
+    title: 'Earn Streaks',
+    description: 'More Streaks = More Motivation.',
     icon: Trophy,
     color: 'bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400'
   }

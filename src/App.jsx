@@ -1,83 +1,88 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
+import Landing from './pages/Landing';
 import Home from './pages/Home';
 import RoadmapPage from './pages/RoadmapPage';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
-import Landing from './pages/Landing';
+import AnimatedRobot from './components/AnimatedRobot';
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
-
-  const [view, setView] = useState(() => {
-    const auth = localStorage.getItem('isAuthenticated') === 'true';
-    return { page: auth ? 'home' : 'landing', courseName: null };
-  });
+  // Start on the pre-login landing page
+  const [view, setView] = useState({ page: 'landing', courseName: null });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const handleNavigate = (page, courseName = null) => {
-    const auth = localStorage.getItem('isAuthenticated') === 'true';
-    if (!auth && page !== 'login' && page !== 'signup' && page !== 'landing') {
-      setView({ page: 'landing', courseName: null });
-    } else {
-      setView({ page, courseName });
-    }
+    setView({ page, courseName });
     window.scrollTo(0, 0);
   };
 
-  const handleLoginSuccess = () => {
-    localStorage.setItem('isAuthenticated', 'true');
+  const handleAuthSuccess = () => {
     setIsAuthenticated(true);
     handleNavigate('home');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
     handleNavigate('landing');
   };
 
-  if (view.page === 'roadmap') {
-    return (
-      <RoadmapPage 
-        courseName={view.courseName} 
-        onBack={() => handleNavigate('home')} 
-        onNavigate={handleNavigate}
-        isAuthenticated={isAuthenticated}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
-  if (view.page === 'landing') {
-    return (
-      <Landing 
-        onNavigate={handleNavigate} 
-        isAuthenticated={isAuthenticated}
-        onLogout={handleLogout}
-      />
-    );
-  }
-
-  if (view.page === 'login') {
-    return (
-      <Login onNavigate={handleNavigate} onAuthSuccess={handleLoginSuccess} />
-    );
-  }
-
-  if (view.page === 'signup') {
-    return (
-      <SignUp onNavigate={handleNavigate} onAuthSuccess={handleLoginSuccess} />
-    );
-  }
+  const renderPage = () => {
+    switch (view.page) {
+      case 'landing':
+        return (
+          <Landing
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+            onLogout={handleLogout}
+          />
+        );
+      case 'home':
+        return (
+          <Home
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+            onLogout={handleLogout}
+          />
+        );
+      case 'roadmap':
+        return (
+          <RoadmapPage
+            courseName={view.courseName}
+            onBack={() => handleNavigate('home')}
+          />
+        );
+      case 'login':
+        return (
+          <Login
+            onNavigate={handleNavigate}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        );
+      case 'signup':
+        return (
+          <SignUp
+            onNavigate={handleNavigate}
+            onAuthSuccess={handleAuthSuccess}
+          />
+        );
+      default:
+        return (
+          <Landing
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+            onLogout={handleLogout}
+          />
+        );
+    }
+  };
 
   return (
-    <Home 
-      onNavigate={handleNavigate} 
-      isAuthenticated={isAuthenticated}
-      onLogout={handleLogout}
-    />
+    <>
+      {renderPage()}
+      <AnimatedRobot />
+    </>
   );
 }
 
 export default App;
+

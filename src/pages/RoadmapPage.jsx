@@ -10,16 +10,16 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
   // Local Storage Progress Persistence
   const [completedSteps, setCompletedSteps] = useState(() => {
-    const saved = localStorage.getItem('learnhub_completed_steps');
+    const saved = localStorage.getItem('AI Lab Learning Portal_completed_steps');
     return saved ? JSON.parse(saved) : {};
   });
 
   // Page view mode: 'roadmap' or 'lesson'
   const [viewMode, setViewMode] = useState('roadmap');
-  
+
   // Selected lesson state
   const [activeStep, setActiveStep] = useState(null);
-  
+
   // Lesson phases: 'study' or 'quiz' or 'complete'
   const [lessonPhase, setLessonPhase] = useState('study');
 
@@ -94,7 +94,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
         [courseName]: [...completedList, activeStep.id]
       };
       setCompletedSteps(updated);
-      localStorage.setItem('learnhub_completed_steps', JSON.stringify(updated));
+      localStorage.setItem('AI Lab Learning Portal_completed_steps', JSON.stringify(updated));
     }
     setViewMode('roadmap');
     setActiveStep(null);
@@ -115,7 +115,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
         stepData: step,
         stepIndex: index
       });
-      
+
       // 2. Quiz / Challenge Node
       const isChallenge = step.study.code ? true : false;
       list.push({
@@ -198,14 +198,14 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     }
     return d;
   };
-  
+
   const fullPathD = getFullPathD();
 
   // Handle vehicle movement animation when completed steps update
   useEffect(() => {
     const newActiveIdx = milestones.findIndex((m, idx) => getMilestoneStatus(m, idx) === 'current');
     const targetIdx = newActiveIdx !== -1 ? newActiveIdx : milestones.length - 1;
-    
+
     // Helper to update car coordinates
     const updateCoords = (val) => {
       if (!pathElement) return;
@@ -225,7 +225,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
       setCarCoords({ x: coords.X, y: coords.Y, angle: 90 });
       return;
     }
-    
+
     // Position immediately if we are mounting or index is identical
     if (currentAnimatedIndex === 0 && carCoords.x === 300 && carCoords.y === 100) {
       setCurrentAnimatedIndex(targetIdx);
@@ -258,7 +258,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     const pathLength = pathElement.getTotalLength();
     const progress = currentAnimatedIndex / (milestones.length - 1);
     const distance = progress * pathLength;
-    
+
     const particles = [];
     const offsets = [12, 24, 36];
     offsets.forEach((offset, idx) => {
@@ -275,31 +275,31 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     });
     return particles;
   };
-  
+
   const trailParticles = getTrailParticles();
 
   const currentSegmentIdx = Math.floor(currentAnimatedIndex);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8F9FC] dark:bg-slate-950 font-sans transition-colors duration-300">
-      
+
       {/* 1. ROADMAP VIEW (DASHBOARD) */}
       {viewMode === 'roadmap' && (
         <>
           <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
-          
+
           <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
-            
+
             {/* Back Navigation Bar */}
             <div className="mb-8 flex items-center justify-between">
-              <button 
+              <button
                 onClick={onBack}
                 className="flex items-center text-text-secondary dark:text-slate-400 hover:text-primary dark:hover:text-indigo-400 font-bold transition-colors group"
               >
                 <ArrowLeft size={20} className="mr-2 transform group-hover:-translate-x-1 transition-transform" />
                 Back to Dashboard
               </button>
-              
+
               <span className="text-xs font-black uppercase tracking-wider bg-primary/10 dark:bg-indigo-950/40 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-lg border border-primary/20 dark:border-indigo-900/30">
                 AI/ML Learning Path
               </span>
@@ -308,7 +308,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
             {/* Course Progress Section at Top */}
             <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 mb-12 shadow-[0_4px_0_0_rgba(226,232,240,1)] dark:shadow-[0_4px_0_0_rgba(15,23,42,1)]">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                
+
                 {/* Left: Progress Title & Bar */}
                 <div className="lg:col-span-5 space-y-4">
                   <div>
@@ -320,24 +320,24 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       Climb the winding road to master advanced concepts.
                     </p>
                   </div>
-                  
+
                   <div>
                     <div className="flex justify-between items-center text-xs font-black text-text-primary dark:text-slate-200 mb-2">
                       <span>Overall Completion</span>
                       <span className="text-green-600 dark:text-green-400">{progressPercent}%</span>
                     </div>
                     <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden p-[2px] border border-border dark:border-slate-750">
-                      <div 
+                      <div
                         className="bg-gradient-to-r from-[#3B3B98] to-[#6C63FF] h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(108,99,255,0.4)]"
                         style={{ width: `${progressPercent}%` }}
                       />
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Right: 4 Stats Cards */}
                 <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  
+
                   {/* Topics Card */}
                   <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
                     <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
@@ -348,7 +348,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.length}</span>
                     </div>
                   </div>
-                  
+
                   {/* Quizzes Card */}
                   <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
                     <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
@@ -359,7 +359,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => !s.study.code).length}</span>
                     </div>
                   </div>
-                  
+
                   {/* Challenges Card */}
                   <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
                     <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
@@ -370,7 +370,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => s.study.code).length}</span>
                     </div>
                   </div>
-                  
+
                   {/* Streak Card */}
                   <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
                     <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
@@ -381,31 +381,31 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <span className="text-[10px] text-green-600 dark:text-green-400 font-black ml-1">DAYS</span>
                     </div>
                   </div>
-                  
+
                 </div>
               </div>
             </div>
 
             {/* Winding Road Journey Section */}
             <div className="flex justify-center items-center py-12 overflow-x-hidden md:overflow-x-visible">
-              <div 
-                className="relative w-full max-w-[600px]" 
+              <div
+                className="relative w-full max-w-[600px]"
                 style={{ height: `${H}px` }}
               >
-                
+
                 {/* Curved SVG Road */}
-                <svg 
-                  className="absolute inset-0 w-full h-full pointer-events-none" 
-                  viewBox={`0 0 600 ${H}`} 
-                  fill="none" 
+                <svg
+                  className="absolute inset-0 w-full h-full pointer-events-none"
+                  viewBox={`0 0 600 ${H}`}
+                  fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
                   {/* Hidden continuous path for length & point measurements */}
-                  <path 
-                    d={fullPathD} 
-                    ref={setPathElement} 
-                    fill="none" 
-                    stroke="transparent" 
+                  <path
+                    d={fullPathD}
+                    ref={setPathElement}
+                    fill="none"
+                    stroke="transparent"
                     className="pointer-events-none"
                   />
 
@@ -413,42 +413,42 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     const start = getMilestoneCoords(i, milestones.length);
                     const end = getMilestoneCoords(i + 1, milestones.length);
                     const pathD = `M ${start.X} ${start.Y} C ${start.X} ${start.Y + 90}, ${end.X} ${end.Y - 90}, ${end.X} ${end.Y}`;
-                    
+
                     const targetMilestone = milestones[i + 1];
                     const targetStatus = getMilestoneStatus(targetMilestone, i + 1);
                     const isUnlocked = targetStatus !== 'locked';
                     const isCurrentlyTraveled = isMoving && i === currentSegmentIdx;
-                    
+
                     return (
                       <g key={i}>
                         {/* Thick Road Track */}
-                        <path 
-                          d={pathD} 
-                          stroke={isUnlocked ? '#6C63FF' : '#E2E8F0'} 
-                          strokeWidth={28} 
-                          strokeLinecap="round" 
-                          fill="none" 
+                        <path
+                          d={pathD}
+                          stroke={isUnlocked ? '#6C63FF' : '#E2E8F0'}
+                          strokeWidth={28}
+                          strokeLinecap="round"
+                          fill="none"
                           className="transition-colors duration-500 dark:stroke-slate-800"
                         />
                         {/* Road Glow layer when unlocked or active */}
                         {(isCurrentlyTraveled || (isUnlocked && !isMoving)) && (
-                          <path 
-                            d={pathD} 
-                            stroke="#6C63FF" 
-                            strokeWidth={36} 
-                            strokeLinecap="round" 
-                            fill="none" 
+                          <path
+                            d={pathD}
+                            stroke="#6C63FF"
+                            strokeWidth={36}
+                            strokeLinecap="round"
+                            fill="none"
                             className="opacity-20 blur-sm transition-opacity duration-300"
                           />
                         )}
                         {/* Lane Dash Divider */}
-                        <path 
-                          d={pathD} 
-                          stroke={isUnlocked ? '#FFFFFF' : '#94A3B8'} 
-                          strokeWidth={2} 
-                          strokeDasharray="6,6" 
-                          strokeLinecap="round" 
-                          fill="none" 
+                        <path
+                          d={pathD}
+                          stroke={isUnlocked ? '#FFFFFF' : '#94A3B8'}
+                          strokeWidth={2}
+                          strokeDasharray="6,6"
+                          strokeLinecap="round"
+                          fill="none"
                           className="transition-colors duration-500 opacity-70 dark:stroke-slate-650"
                         />
                       </g>
@@ -458,7 +458,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
                 {/* Motion Trail Particles */}
                 {trailParticles.map(p => (
-                  <div 
+                  <div
                     key={p.id}
                     className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-[#FF6B6B] to-[#6C63FF] pointer-events-none transition-opacity duration-300 shadow-[0_0_8px_#FF6B6B] z-20"
                     style={{
@@ -471,7 +471,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 ))}
 
                 {/* Animated Progress Vehicle (Sports Car) */}
-                <div 
+                <div
                   className="absolute z-40 pointer-events-none transition-transform duration-75"
                   style={{
                     left: `${(carCoords.x / 600) * 100}%`,
@@ -502,19 +502,19 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     <rect x="24" y="21" width="7" height="2" rx="0.5" fill="#0F172A" />
                   </svg>
                 </div>
-                
+
                 {/* Milestone Node Buttons & Info Cards */}
                 {milestones.map((milestone, index) => {
                   const coords = getMilestoneCoords(index, milestones.length);
                   const status = getMilestoneStatus(milestone, index);
                   const isUnlocked = status !== 'locked';
-                  
+
                   // Setup type-specific visual properties
                   let Icon = BookOpen;
                   let colorClass = 'bg-[#3B3B98] text-white';
                   let emoji = '📚';
                   let typeLabel = 'Topic';
-                  
+
                   if (milestone.type === 'quiz') {
                     Icon = HelpCircle;
                     colorClass = 'bg-[#FF6B6B] text-white';
@@ -531,10 +531,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     emoji = '🏆';
                     typeLabel = 'Final Assessment';
                   }
-                  
+
                   const handleClick = () => {
                     if (status === 'locked') return;
-                    
+
                     if (milestone.type === 'topic') {
                       handleStartLesson(milestone);
                     } else if (milestone.type === 'quiz' || milestone.type === 'challenge') {
@@ -550,17 +550,17 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       steps.forEach(s => {
                         if (s.quiz) allQuestions.push(...s.quiz);
                       });
-                      
+
                       const assessmentStepData = {
                         id: 'final',
                         title: 'Final Course Assessment',
-                        study: { 
-                          heading: 'Final Course Assessment', 
-                          content: 'Complete the comprehensive test covering all lessons in this course.' 
+                        study: {
+                          heading: 'Final Course Assessment',
+                          content: 'Complete the comprehensive test covering all lessons in this course.'
                         },
                         quiz: allQuestions
                       };
-                      
+
                       setActiveStep({
                         ...milestone,
                         stepData: assessmentStepData
@@ -573,33 +573,32 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       setScore(0);
                     }
                   };
-                  
+
                   return (
-                    <div 
+                    <div
                       key={milestone.id}
                       className="absolute -translate-x-1/2 -translate-y-1/2 z-30"
-                      style={{ 
-                        left: `${(coords.X / 600) * 100}%`, 
-                        top: `${(coords.Y / H) * 100}%` 
+                      style={{
+                        left: `${(coords.X / 600) * 100}%`,
+                        top: `${(coords.Y / H) * 100}%`
                       }}
                     >
                       {/* Glow Ring for Current Step */}
                       {status === 'current' && (
                         <div className="absolute -inset-3 rounded-full bg-[#6C63FF]/30 dark:bg-indigo-500/30 animate-pulse z-0" />
                       )}
-                      
+
                       {/* Interactive Circle Node */}
                       <motion.button
                         whileHover={isUnlocked ? { scale: 1.15 } : {}}
                         whileTap={isUnlocked ? { scale: 0.95 } : {}}
                         onClick={handleClick}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center border-4 shadow-lg transition-all duration-300 z-10 relative ${
-                          status === 'completed'
+                        className={`w-14 h-14 rounded-full flex items-center justify-center border-4 shadow-lg transition-all duration-300 z-10 relative ${status === 'completed'
                             ? 'bg-[#4CAF50] border-white dark:border-slate-900 text-white shadow-[#4CAF50]/20'
                             : status === 'current'
                               ? 'bg-[#3B3B98] border-white dark:border-slate-900 text-white shadow-[#3B3B98]/30 ring-4 ring-[#6C63FF]/20'
                               : 'bg-slate-200 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400 dark:text-slate-650 shadow-none cursor-not-allowed'
-                        }`}
+                          }`}
                       >
                         {status === 'completed' ? (
                           <Check size={24} className="stroke-[3.5]" />
@@ -609,25 +608,23 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           <Icon size={20} className="stroke-[2.5]" />
                         )}
                       </motion.button>
-                      
+
                       {/* Info Card Next to Circle */}
-                      <div 
-                        className={`absolute w-[180px] md:w-[220px] transition-all duration-300 pointer-events-auto ${
-                          coords.X === 150
+                      <div
+                        className={`absolute w-[180px] md:w-[220px] transition-all duration-300 pointer-events-auto ${coords.X === 150
                             ? 'left-1/2 -translate-x-1/2 top-[65px] md:right-[75px] md:left-auto md:translate-x-0 md:top-1/2 md:-translate-y-1/2'
                             : coords.X === 450
                               ? 'left-1/2 -translate-x-1/2 top-[65px] md:left-[75px] md:right-auto md:translate-x-0 md:top-1/2 md:-translate-y-1/2'
                               : 'left-1/2 -translate-x-1/2 top-[65px] md:left-[75px] md:translate-x-0 md:top-1/2 md:-translate-y-1/2'
-                        }`}
+                          }`}
                       >
-                        <div 
-                          className={`p-4 rounded-3xl border-2 transition-all duration-300 ${
-                            status === 'current'
+                        <div
+                          className={`p-4 rounded-3xl border-2 transition-all duration-300 ${status === 'current'
                               ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)] md:scale-105'
                               : status === 'completed'
                                 ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm'
                                 : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center space-x-1.5 mb-1.5 justify-center md:justify-start">
                             <span className="text-sm">{emoji}</span>
@@ -635,11 +632,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                               {typeLabel}
                             </span>
                           </div>
-                          
+
                           <h4 className="text-xs md:text-sm font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-center md:text-left flex items-center justify-center md:justify-start">
                             {milestone.title}
                           </h4>
-                          
+
                           <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[9px] font-bold text-text-secondary dark:text-slate-450">
                             <span className="flex items-center">
                               {milestone.type === 'challenge' && (
@@ -648,10 +645,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                               {milestone.duration}
                             </span>
                             <span className={
-                              status === 'completed' 
-                                ? 'text-green-600 dark:text-green-400 font-bold' 
-                                : status === 'current' 
-                                  ? 'text-[#6C63FF] dark:text-indigo-400 font-bold' 
+                              status === 'completed'
+                                ? 'text-green-600 dark:text-green-400 font-bold'
+                                : status === 'current'
+                                  ? 'text-[#6C63FF] dark:text-indigo-400 font-bold'
                                   : 'text-slate-400 dark:text-slate-650'
                             }>
                               {status === 'completed' ? 'Completed' : status === 'current' ? 'Current' : 'Locked'}
@@ -659,16 +656,16 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           </div>
                         </div>
                       </div>
-                      
+
                     </div>
                   );
                 })}
-                
+
               </div>
             </div>
-            
+
           </main>
-          
+
           <Footer />
         </>
       )}
@@ -676,22 +673,22 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
       {/* 2. IMMERSIVE LESSON VIEW (FULL SCREEN) */}
       {viewMode === 'lesson' && activeStep && (
         <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 transition-colors duration-300">
-          
+
           {/* Immersive Top Bar */}
           <div className="max-w-4xl w-full mx-auto px-4 md:px-6 pt-6 pb-4 flex items-center space-x-6">
-            <button 
+            <button
               onClick={() => setViewMode('roadmap')}
               className="text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               <X size={22} className="stroke-[2.5]" />
             </button>
             <div className="flex-grow bg-slate-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className="bg-primary dark:bg-indigo-500 h-3 rounded-full transition-all duration-300"
-                style={{ 
-                  width: lessonPhase === 'study' 
-                    ? '20%' 
-                    : lessonPhase === 'quiz' 
+                style={{
+                  width: lessonPhase === 'study'
+                    ? '20%'
+                    : lessonPhase === 'quiz'
                       ? `${20 + ((currentQuestionIdx + 1) / activeStep.stepData.quiz.length) * 70}%`
                       : '100%'
                 }}
@@ -707,7 +704,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
           {/* Immersive Body Area */}
           <div className="flex-grow flex items-center justify-center p-4">
             <div className="max-w-xl w-full py-8 md:py-12">
-              
+
               {/* SUB-PHASE A: STUDY SLIDE */}
               {lessonPhase === 'study' && (
                 <div className="space-y-6 animate-scale-up">
@@ -715,11 +712,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     <BookOpen size={28} />
                     <span className="text-xs font-black uppercase tracking-widest">Core Concept Material</span>
                   </div>
-                  
+
                   <h2 className="text-3xl font-black text-text-primary dark:text-slate-100 tracking-tight leading-tight">
                     {activeStep.stepData.study.heading}
                   </h2>
-                  
+
                   <p className="text-lg text-text-secondary dark:text-slate-400 font-semibold leading-relaxed">
                     {activeStep.stepData.study.content}
                   </p>
@@ -776,7 +773,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
               {lessonPhase === 'quiz' && (
                 <div className="space-y-6">
                   <span className="text-xs font-black uppercase tracking-widest text-cyan-500">Practice Quiz</span>
-                  
+
                   <h2 className="text-2xl md:text-3xl font-black text-text-primary dark:text-slate-100 leading-tight">
                     {activeStep.stepData.quiz[currentQuestionIdx].question}
                   </h2>
@@ -786,7 +783,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     {activeStep.stepData.quiz[currentQuestionIdx].options.map((option, idx) => {
                       const isSelected = selectedOption === idx;
                       const isCorrect = activeStep.stepData.quiz[currentQuestionIdx].answerIndex === idx;
-                      
+
                       let optionStyle = 'border-border dark:border-slate-800 hover:border-primary dark:hover:border-indigo-500 bg-slate-50/50 dark:bg-slate-900';
                       if (isSelected && !isAnswerChecked) {
                         optionStyle = 'border-primary dark:border-indigo-400 bg-indigo-50/10 dark:bg-indigo-950/20';
@@ -817,11 +814,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
                   {/* Answer Explanation */}
                   {isAnswerChecked && (
-                    <div className={`p-5 rounded-2xl border animate-scale-up ${
-                      selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex 
-                        ? 'bg-green-50 dark:bg-green-950/10 border-green-200 dark:border-green-900/30 text-green-800 dark:text-green-300' 
+                    <div className={`p-5 rounded-2xl border animate-scale-up ${selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
+                        ? 'bg-green-50 dark:bg-green-950/10 border-green-200 dark:border-green-900/30 text-green-800 dark:text-green-300'
                         : 'bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-900/30 text-red-800 dark:text-red-300'
-                    }`}>
+                      }`}>
                       <p className="font-black text-sm mb-1">
                         {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? 'Correct!' : 'Incorrect'}
                       </p>
@@ -835,11 +831,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <button
                         onClick={handleCheckAnswer}
                         disabled={selectedOption === null}
-                        className={`w-full sm:w-auto px-10 py-4 rounded-xl font-bold text-base transition-all shadow-[0_4px_0_0_rgba(67,56,202,1)] ${
-                          selectedOption !== null
+                        className={`w-full sm:w-auto px-10 py-4 rounded-xl font-bold text-base transition-all shadow-[0_4px_0_0_rgba(67,56,202,1)] ${selectedOption !== null
                             ? 'bg-primary text-white hover:bg-indigo-700'
                             : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:border-slate-800'
-                        }`}
+                          }`}
                       >
                         CHECK ANSWER
                       </button>

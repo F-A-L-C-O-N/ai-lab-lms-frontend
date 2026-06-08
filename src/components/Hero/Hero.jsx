@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Code, CheckCircle, Zap } from 'lucide-react';
+import { Code, CheckCircle, Zap } from 'lucide-react';
 
 const Hero = ({ onNavigate }) => {
   return (
@@ -31,17 +31,13 @@ const Hero = ({ onNavigate }) => {
             
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
               <button 
-                onClick={() => onNavigate && onNavigate('signup')}
+                onClick={() => onNavigate && onNavigate('login')}
                 className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white font-bold text-lg px-8 py-4 rounded-2xl shadow-[0_6px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] hover:translate-y-[2px] active:translate-y-[6px] active:shadow-none transition-all cursor-pointer"
               >
                 START LEARNING NOW
               </button>
-              
-              <button className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-text-primary dark:text-slate-100 font-bold text-lg px-8 py-4 rounded-2xl shadow-[0_6px_0_0_rgba(226,232,240,1)] dark:shadow-[0_6px_0_0_rgba(30,41,59,1)] hover:shadow-[0_4px_0_0_rgba(203,213,225,1)] hover:translate-y-[2px] active:translate-y-[6px] active:shadow-none transition-all">
-                <Play size={20} className="fill-text-primary dark:fill-slate-100" />
-                <span>WATCH DEMO</span>
-              </button>
             </div>
+
           </div>
 
           {/* Gamified UI Illustration */}
