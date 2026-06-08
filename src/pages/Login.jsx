@@ -1,6 +1,49 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
+import { auth, googleProvider, githubProvider } from '../../firebase/clients';
+
+// Map Firebase error codes to user-friendly messages
+const getFirebaseErrorMessage = (errorCode) => {
+  switch (errorCode) {
+    case 'auth/user-not-found':
+      return 'No account found with this email address.';
+    case 'auth/wrong-password':
+      return 'Incorrect password. Please try again.';
+    case 'auth/invalid-email':
+      return 'Please enter a valid email address.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled. Contact support.';
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Please try again later.';
+    case 'auth/invalid-credential':
+      return 'Invalid email or password. Please check and try again.';
+    case 'auth/popup-closed-by-user':
+      return 'Sign-in popup was closed. Please try again.';
+    case 'auth/account-exists-with-different-credential':
+      return 'An account already exists with the same email but different sign-in method.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your connection and try again.';
+    default:
+      return 'An unexpected error occurred. Please try again.';
+  }
+};
+
+// Helper: send Firebase ID token to server → server sets httpOnly session cookie
+const createSessionCookie = async (user) => {
+  const idToken = await user.getIdToken();
+  const res = await fetch('/api/session/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ idToken }),
+  });
+  if (!res.ok) {
+    throw new Error('Failed to create session cookie');
+  }
+  return res.json();
+};
 
 const Login = ({ onNavigate, onAuthSuccess }) => {
   const [email, setEmail] = useState('');
@@ -10,6 +53,7 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
   // Interaction & UI States
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
+  const [firebaseError, setFirebaseError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
 
@@ -35,16 +79,22 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
 
     setIsLoading(true);
-    // Simulate API request delay
-    setTimeout(() => {
-      setIsLoading(false);
+    setFirebaseError('');
+
+    try {
+      // 1. Authenticate with Firebase
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      // 2. Create server-side httpOnly session cookie
+      await createSessionCookie(userCredential.user);
+      // 3. Sign out from Firebase client — cookie is now the single auth source
+      await signOut(auth);
+
       setLoginSuccess(true);
-      // Navigate to home page after a brief delay
       setTimeout(() => {
         if (onAuthSuccess) {
           onAuthSuccess();
@@ -52,14 +102,28 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
           onNavigate('home');
         }
       }, 1500);
-    }, 2000);
+    } catch (error) {
+      console.error('Login error:', error.code || error.message);
+      setFirebaseError(getFirebaseErrorMessage(error.code));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleSocialLogin = (platform) => {
-    console.log('Logging in with platform:', platform);
+  const handleSocialLogin = async (platform) => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    setFirebaseError('');
+
+    const provider = platform === 'google' ? googleProvider : githubProvider;
+
+    try {
+      // 1. Authenticate with social provider
+      const userCredential = await signInWithPopup(auth, provider);
+      // 2. Create server-side httpOnly session cookie
+      await createSessionCookie(userCredential.user);
+      // 3. Sign out from Firebase client — cookie is now the single auth source
+      await signOut(auth);
+
       setLoginSuccess(true);
       setTimeout(() => {
         if (onAuthSuccess) {
@@ -68,7 +132,12 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
           onNavigate('home');
         }
       }, 1500);
-    }, 1200);
+    } catch (error) {
+      console.error('Social login error:', error.code, error.message);
+      setFirebaseError(getFirebaseErrorMessage(error.code));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -111,6 +180,18 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
                     Enter your credentials to access your AI Lab Learning Portal dashboard
                   </p>
                 </div>
+
+                {/* Firebase Error Banner */}
+                {firebaseError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="mb-6 p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800/50 rounded-2xl flex items-start space-x-3"
+                  >
+                    <AlertCircle className="text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" size={16} />
+                    <p className="text-sm text-red-600 dark:text-red-400">{firebaseError}</p>
+                  </motion.div>
+                )}
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="space-y-6">

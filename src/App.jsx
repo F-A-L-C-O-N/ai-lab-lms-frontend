@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import Landing from './pages/Landing';
+import { useState } from 'react';
 import Home from './pages/Home';
 import RoadmapPage from './pages/RoadmapPage';
 import Login from './pages/Login';
@@ -7,23 +6,35 @@ import SignUp from './pages/SignUp';
 import AnimatedRobot from './components/AnimatedRobot';
 
 function App() {
-  // Start on the pre-login landing page
-  const [view, setView] = useState({ page: 'landing', courseName: null });
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return localStorage.getItem('isAuthenticated') === 'true';
+  });
+
+  const [view, setView] = useState(() => {
+    const auth = localStorage.getItem('isAuthenticated') === 'true';
+    return { page: auth ? 'home' : 'login', courseName: null };
+  });
 
   const handleNavigate = (page, courseName = null) => {
-    setView({ page, courseName });
+    const auth = localStorage.getItem('isAuthenticated') === 'true';
+    if (!auth && page !== 'login' && page !== 'signup') {
+      setView({ page: 'login', courseName: null });
+    } else {
+      setView({ page, courseName });
+    }
     window.scrollTo(0, 0);
   };
 
-  const handleAuthSuccess = () => {
+  const handleLoginSuccess = () => {
+    localStorage.setItem('isAuthenticated', 'true');
     setIsAuthenticated(true);
     handleNavigate('home');
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
-    handleNavigate('landing');
+    handleNavigate('login');
   };
 
   const renderPage = () => {

@@ -28,3 +28,7 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+
+# Firebase Admin credentials — NEVER commit this
+serviceAccountKey.json
+server/node_modules/
