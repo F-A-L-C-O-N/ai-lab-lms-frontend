@@ -48,6 +48,15 @@ import numpy as np
 def min_max_normalize(data):
     return (data - np.min(data)) / (np.max(data) - np.min(data))`
       },
+      codingChallenge: {
+        description: "Write a JavaScript function `minMaxNormalize(data)` that takes an array of numbers and returns a new array with values scaled to the range [0, 1] using Min-Max scaling. If all elements in the array are equal, return an array of zeros.",
+        initialCode: "function minMaxNormalize(data) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: [1, 2, 3, 4, 5], expected: [0, 0.25, 0.5, 0.75, 1] },
+          { input: [10, 20, 30], expected: [0, 0.5, 1] },
+          { input: [5, 5, 5], expected: [0, 0, 0] }
+        ]
+      },
       quiz: [
         {
           question: "What does min-max normalization do to a feature?",
@@ -59,6 +68,17 @@ def min_max_normalize(data):
           ],
           answerIndex: 1,
           explanation: "Min-Max normalization rescales the data features linearly to a standard range, typically between 0 and 1."
+        },
+        {
+          question: "Which of the following code snippets correctly implements Standardization (Z-score normalization) to scale data to have a mean of 0 and a standard deviation of 1?",
+          options: [
+            "scaled = (data - np.min(data)) / (np.max(data) - np.min(data))",
+            "scaled = (data - np.mean(data)) / np.std(data)",
+            "scaled = data / np.max(data)",
+            "scaled = np.log1p(data)"
+          ],
+          answerIndex: 1,
+          explanation: "Standardization (Z-score normalization) rescales data by subtracting the mean and dividing by the standard deviation: (x - mean) / std."
         }
       ]
     },
@@ -124,6 +144,15 @@ def min_max_normalize(data):
 def relu(x):
     return np.maximum(0, x)`
       },
+      codingChallenge: {
+        description: "Write a JavaScript function `relu(x)` that computes the Rectified Linear Unit (ReLU) activation. If x is a number, return max(0, x). If x is an array of numbers, apply ReLU to each element and return a new array.",
+        initialCode: "function relu(x) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: -5, expected: 0 },
+          { input: 3, expected: 3 },
+          { input: [-10, 0, 5], expected: [0, 0, 5] }
+        ]
+      },
       quiz: [
         {
           question: "Which activation function outputs values between 0 and 1?",
@@ -175,6 +204,14 @@ def relu(x):
 text = "Attention is all you need"
 tokens = text.lower().split()
 # Result: ['attention', 'is', 'all', 'you', 'need']`
+      },
+      codingChallenge: {
+        description: "Write a JavaScript function `tokenize(text)` that converts a string to lowercase, removes any punctuation characters (.,!?;:), and splits the text into an array of individual words (tokens). Filter out any empty tokens.",
+        initialCode: "function tokenize(text) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: "Attention is all you need!", expected: ["attention", "is", "all", "you", "need"] },
+          { input: "Hello, World; NLP is fun.", expected: ["hello", "world", "nlp", "is", "fun"] }
+        ]
       },
       quiz: [
         {
@@ -253,6 +290,15 @@ import numpy as np
 def sigmoid(z):
     return 1 / (1 + np.exp(-z))`
       },
+      codingChallenge: {
+        description: "Write a JavaScript function `sigmoid(z)` that calculates the Sigmoid activation. It maps any real-valued number to the range [0, 1] using the formula: 1 / (1 + e^-z). Return the result rounded to 4 decimal places.",
+        initialCode: "function sigmoid(z) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: 0, expected: 0.5 },
+          { input: 2, expected: 0.8808 },
+          { input: -2, expected: 0.1192 }
+        ]
+      },
       quiz: [
         {
           question: "Which function maps linear predictions to a range between 0 and 1 in Logistic Regression?",
@@ -303,6 +349,15 @@ def sigmoid(z):
         code: `# Random Forest ensemble mock
 predictions = [tree.predict(X_test) for tree in forest]
 majority_vote = max(set(predictions), key=predictions.count)`
+      },
+      codingChallenge: {
+        description: "Write a JavaScript function `calculateGini(counts)` that takes an array `[class1Count, class2Count]` representing class sample counts and returns the Gini Impurity of the node. Formula: 1 - (p1^2 + p2^2) where p1 and p2 are the proportions of class 1 and class 2. Return the result rounded to 4 decimal places.",
+        initialCode: "function calculateGini(counts) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: [5, 5], expected: 0.5 },
+          { input: [10, 0], expected: 0 },
+          { input: [3, 1], expected: 0.375 }
+        ]
       },
       quiz: [
         {
@@ -356,6 +411,14 @@ majority_vote = max(set(predictions), key=predictions.count)`
 def rbf_kernel(x1, x2, gamma=0.1):
     return np.exp(-gamma * np.linalg.norm(x1 - x2)**2)`
       },
+      codingChallenge: {
+        description: "Write a JavaScript function `linearKernel(v1, v2)` that calculates the linear kernel (dot product) of two vectors of equal length. v1 and v2 are arrays of numbers. (e.g. linearKernel([1, 2], [3, 4]) is 1*3 + 2*4 = 11)",
+        initialCode: "function linearKernel(v1, v2) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: [[1, 2], [3, 4]], expected: 11 },
+          { input: [[0, 1, -1], [2, 3, 4]], expected: -1 }
+        ]
+      },
       quiz: [
         {
           question: "Why do we use the Kernel Trick in SVM?",
@@ -406,6 +469,14 @@ def rbf_kernel(x1, x2, gamma=0.1):
         code: `# Recalculate centroids formula
 def update_centroids(points, labels, k):
     return np.array([points[labels == i].mean(axis=0) for i in range(k)])`
+      },
+      codingChallenge: {
+        description: "Write a JavaScript function `euclideanDistance(p1, p2)` that returns the Euclidean distance between two points in 2D space. p1 and p2 are arrays of coordinate values `[x, y]`. Return the result rounded to 4 decimal places.",
+        initialCode: "function euclideanDistance(p1, p2) {\n  // Write your code here\n  \n}",
+        testCases: [
+          { input: [[0, 0], [3, 4]], expected: 5 },
+          { input: [[1, 1], [4, 5]], expected: 5 }
+        ]
       },
       quiz: [
         {

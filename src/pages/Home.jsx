@@ -5,7 +5,7 @@ import LearningPaths from '../components/LearningPaths/LearningPaths';
 import PopularTracks from '../components/PopularTracks/PopularTracks';
 import Footer from '../components/Footer/Footer';
 
-const Home = ({ onNavigate, isAuthenticated, onLogout }) => {
+const Home = ({ onNavigate, isAuthenticated, onLogout, userName }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ const Home = ({ onNavigate, isAuthenticated, onLogout }) => {
       <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
       
       <main className="flex-grow pt-24 pb-12">
-        <LearningPaths onCardClick={handleCardClick} />
+        <LearningPaths onCardClick={handleCardClick} userName={userName} />
         <PopularTracks onCardClick={handleCardClick} />
       </main>
 

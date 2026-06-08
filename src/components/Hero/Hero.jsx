@@ -41,7 +41,7 @@ const Hero = ({ onNavigate }) => {
           </div>
 
           {/* Gamified UI Illustration */}
-          <div className="w-full lg:w-1/2 relative h-[400px] lg:h-[500px]">
+          <div className="w-full lg:w-1/2 relative h-[560px] lg:h-[600px] mt-16 lg:mt-0 flex items-center justify-center">
             {/* Main Phone Mockup */}
             <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[550px] bg-white dark:bg-slate-900 border-8 border-slate-900 rounded-[3rem] shadow-2xl overflow-hidden z-10">
               <div className="h-full w-full bg-background dark:bg-slate-950 p-4 flex flex-col">

@@ -29,6 +29,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const [isAnswerChecked, setIsAnswerChecked] = useState(false);
   const [score, setScore] = useState(0);
 
+  // Coding challenge states
+  const [userCode, setUserCode] = useState('');
+  const [compileOutput, setCompileOutput] = useState(null);
+  const [isChallengePassed, setIsChallengePassed] = useState(false);
+
   // Helper to determine milestone lock/complete status
   const isMilestoneCompleted = (milestone) => {
     const completedList = completedSteps[courseName] || [];
@@ -56,10 +61,65 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   };
 
   const handleStartPractice = () => {
-    if (!activeStep.stepData.quiz || activeStep.stepData.quiz.length === 0) {
+    if (activeStep.type === 'challenge') {
+      setLessonPhase('quiz');
+      setUserCode(activeStep.stepData.codingChallenge?.initialCode || '');
+      setCompileOutput(null);
+      setIsChallengePassed(false);
+    } else if (!activeStep.stepData.quiz || activeStep.stepData.quiz.length === 0) {
       handleCompleteStep();
     } else {
       setLessonPhase('quiz');
+    }
+  };
+
+  const handleCompileRun = () => {
+    const challenge = activeStep.stepData.codingChallenge;
+    if (!challenge) return;
+
+    try {
+      const userFunc = new Function(`
+        ${userCode}
+        try { return minMaxNormalize; } catch(e){}
+        try { return relu; } catch(e){}
+        try { return tokenize; } catch(e){}
+        try { return sigmoid; } catch(e){}
+        try { return calculateGini; } catch(e){}
+        try { return linearKernel; } catch(e){}
+        try { return euclideanDistance; } catch(e){}
+        throw new Error("Could not find the target function. Make sure it is defined correctly.");
+      `)();
+
+      let allPassed = true;
+      const testResults = challenge.testCases.map((tc, idx) => {
+        const inputCopy = JSON.parse(JSON.stringify(tc.input));
+        let output;
+
+        if (Array.isArray(tc.input) && tc.input.length === 2 && Array.isArray(tc.input[0])) {
+          output = userFunc(inputCopy[0], inputCopy[1]);
+        } else {
+          output = userFunc(inputCopy);
+        }
+
+        const passed = Array.isArray(tc.expected)
+          ? JSON.stringify(output) === JSON.stringify(tc.expected)
+          : Math.abs(output - tc.expected) < 1e-4;
+
+        if (!passed) allPassed = false;
+        return {
+          caseIdx: idx + 1,
+          input: JSON.stringify(tc.input),
+          expected: JSON.stringify(tc.expected),
+          got: JSON.stringify(output),
+          passed
+        };
+      });
+
+      setCompileOutput({ success: allPassed, results: testResults });
+      setIsChallengePassed(allPassed);
+    } catch (err) {
+      setCompileOutput({ success: false, error: err.message });
+      setIsChallengePassed(false);
     }
   };
 
@@ -76,13 +136,25 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     }
   };
 
-  const handleNextQuestion = () => {
-    setSelectedOption(null);
-    setIsAnswerChecked(false);
-    if (currentQuestionIdx + 1 < activeStep.stepData.quiz.length) {
-      setCurrentQuestionIdx(prev => prev + 1);
-    } else {
-      setLessonPhase('complete');
+  const getStreakCount = () => {
+    try {
+      const saved = localStorage.getItem('AI_Lab_Streak_Info');
+      if (!saved) return 0;
+      const streakInfo = JSON.parse(saved);
+      if (!streakInfo.history) streakInfo.history = [];
+
+      // Check if streak is broken (last activity older than yesterday)
+      const today = new Date().toISOString().split('T')[0];
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+      if (streakInfo.lastActivityDate && streakInfo.lastActivityDate !== today && streakInfo.lastActivityDate !== yesterdayStr) {
+        return 0;
+      }
+      return streakInfo.count || 0;
+    } catch (e) {
+      return 0;
     }
   };
 
@@ -95,10 +167,53 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
       };
       setCompletedSteps(updated);
       localStorage.setItem('AI Lab Learning Portal_completed_steps', JSON.stringify(updated));
+
+      // Update Daily Streak dynamically when completing a milestone
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const savedStreak = localStorage.getItem('AI_Lab_Streak_Info');
+        let streakInfo = savedStreak ? JSON.parse(savedStreak) : { count: 0, lastActivityDate: '', bestStreak: 0, history: [] };
+        if (!streakInfo.history) streakInfo.history = [];
+
+        if (!streakInfo.history.includes(today)) {
+          streakInfo.history.push(today);
+          
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+          if (streakInfo.lastActivityDate === yesterdayStr) {
+            streakInfo.count += 1;
+          } else if (streakInfo.lastActivityDate === today) {
+            // keep count
+          } else {
+            // broken streak or first activity
+            streakInfo.count = 1;
+          }
+          
+          streakInfo.lastActivityDate = today;
+          if (streakInfo.count > streakInfo.bestStreak) {
+            streakInfo.bestStreak = streakInfo.count;
+          }
+          localStorage.setItem('AI_Lab_Streak_Info', JSON.stringify(streakInfo));
+        }
+      } catch (e) {
+        console.error('Failed to update streak:', e);
+      }
     }
     setViewMode('roadmap');
     setActiveStep(null);
     window.scrollTo(0, 0);
+  };
+
+  const handleNextQuestion = () => {
+    setSelectedOption(null);
+    setIsAnswerChecked(false);
+    if (currentQuestionIdx + 1 < activeStep.stepData.quiz.length) {
+      setCurrentQuestionIdx(prev => prev + 1);
+    } else {
+      handleCompleteStep();
+    }
   };
 
   // Flattened Milestones Generation
@@ -250,7 +365,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     } else {
       updateCoords(targetIdx);
     }
-  }, [completedList, pathElement, milestones.length]);
+  }, [completedList.join(','), pathElement, milestones.length]);
 
   // Compute trails
   const getTrailParticles = () => {
@@ -284,11 +399,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     <div className="min-h-screen flex flex-col bg-[#F8F9FC] dark:bg-slate-950 font-sans transition-colors duration-300">
 
       {/* 1. ROADMAP VIEW (DASHBOARD) */}
-      {viewMode === 'roadmap' && (
-        <>
-          <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
+      <div className={viewMode === 'roadmap' ? 'flex flex-col flex-grow' : 'hidden'}>
+        <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
 
-          <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+        <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
 
             {/* Back Navigation Bar */}
             <div className="mb-8 flex items-center justify-between">
@@ -377,7 +491,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <Flame size={14} className="text-[#FF6B6B] mr-1.5 fill-accent text-accent" /> Streak
                     </span>
                     <div>
-                      <span className="text-2xl font-black text-text-primary dark:text-slate-100">12</span>
+                      <span className="text-2xl font-black text-text-primary dark:text-slate-100">{getStreakCount()}</span>
                       <span className="text-[10px] text-green-600 dark:text-green-400 font-black ml-1">DAYS</span>
                     </div>
                   </div>
@@ -662,13 +776,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 })}
 
               </div>
-            </div>
+          </div>
 
           </main>
 
           <Footer />
-        </>
-      )}
+        </div>
 
       {/* 2. IMMERSIVE LESSON VIEW (FULL SCREEN) */}
       {viewMode === 'lesson' && activeStep && (
@@ -703,7 +816,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
           {/* Immersive Body Area */}
           <div className="flex-grow flex items-center justify-center p-4">
-            <div className="max-w-xl w-full py-8 md:py-12">
+            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-5xl' : 'max-w-xl'} w-full py-8 md:py-12`}>
 
               {/* SUB-PHASE A: STUDY SLIDE */}
               {lessonPhase === 'study' && (
@@ -771,118 +884,282 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
               {/* SUB-PHASE B: ACTIVE PRACTICE QUIZ */}
               {lessonPhase === 'quiz' && (
-                <div className="space-y-6">
-                  <span className="text-xs font-black uppercase tracking-widest text-cyan-500">Practice Quiz</span>
+                activeStep.type === 'challenge' ? (
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[550px] animate-scale-up bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+                    {/* Left Column: Challenge Description & Test Cases */}
+                    <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
+                      <div className="space-y-5">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-primary dark:text-indigo-400 rounded-full text-xs font-bold w-fit">
+                          <Code size={14} className="stroke-[2.5]" />
+                          <span>CODING CHALLENGE</span>
+                        </div>
+                        <h2 className="text-2xl font-black text-text-primary dark:text-slate-100 leading-tight tracking-tight">
+                          {activeStep.title}
+                        </h2>
+                        
+                        <div className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/10 dark:to-purple-500/10 border border-indigo-100/50 dark:border-indigo-900/35 rounded-2xl p-5 relative overflow-hidden">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-full blur-xl pointer-events-none" />
+                          <p className="text-sm font-semibold text-text-secondary dark:text-slate-350 leading-relaxed relative z-10">
+                            {activeStep.stepData.codingChallenge.description}
+                          </p>
+                        </div>
+                      </div>
 
-                  <h2 className="text-2xl md:text-3xl font-black text-text-primary dark:text-slate-100 leading-tight">
-                    {activeStep.stepData.quiz[currentQuestionIdx].question}
-                  </h2>
+                      {/* Test Cases Panel */}
+                      <div className="space-y-3 pt-2">
+                        <h3 className="text-xs font-black uppercase tracking-wider text-text-primary dark:text-slate-200 flex items-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          Expected Behavior
+                        </h3>
+                        <div className="space-y-2.5">
+                          {activeStep.stepData.codingChallenge.testCases.map((tc, idx) => (
+                            <div key={idx} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 text-xs font-semibold hover:border-slate-300/60 dark:hover:border-slate-700/60 transition-colors">
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span className="text-text-secondary dark:text-slate-500">Test Input:</span>
+                                <code className="bg-slate-100 dark:bg-slate-800/50 px-2 py-0.5 rounded text-text-primary dark:text-slate-300 font-mono">{JSON.stringify(tc.input)}</code>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-text-secondary dark:text-slate-500">Expected Output:</span>
+                                <code className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded font-mono font-bold">{JSON.stringify(tc.expected)}</code>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Multi-choice items */}
-                  <div className="space-y-3 pt-4">
-                    {activeStep.stepData.quiz[currentQuestionIdx].options.map((option, idx) => {
-                      const isSelected = selectedOption === idx;
-                      const isCorrect = activeStep.stepData.quiz[currentQuestionIdx].answerIndex === idx;
+                    {/* Right Column: Code Editor & Console Output */}
+                    <div className="lg:col-span-7 flex flex-col space-y-5">
+                      {/* Interactive Code Editor */}
+                      <div className="flex-grow flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl relative">
+                        {/* Chrome window header */}
+                        <div className="bg-[#121824] border-b border-slate-850 px-4 flex items-center justify-between text-xs text-slate-400">
+                          <div className="flex items-center">
+                            {/* Window buttons */}
+                            <div className="flex space-x-1.5 mr-6 items-center">
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] inline-block"/>
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] inline-block"/>
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F] inline-block"/>
+                            </div>
+                            {/* Tabs */}
+                            <div className="flex pt-1.5">
+                              <span className="bg-[#0B0F19] border-t-2 border-primary text-slate-100 px-4 py-2 font-mono flex items-center gap-1.5 rounded-t-lg text-[11px] border-x border-slate-850">
+                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"/>
+                                solution.js
+                              </span>
+                              <span className="px-4 py-2 font-mono text-slate-500 flex items-center gap-1.5 text-[11px] cursor-not-allowed">
+                                tests.js
+                              </span>
+                            </div>
+                          </div>
+                          <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono">JavaScript</span>
+                        </div>
+                        
+                        {/* Code Editor Body with Line Numbers */}
+                        <div className="flex-grow flex font-mono text-sm leading-[22px] min-h-[285px]">
+                          {/* Line numbers gutter */}
+                          <div className="bg-[#080B11]/85 text-slate-650 select-none py-5 px-3.5 text-right border-r border-slate-900/60 flex flex-col font-mono text-[11px] leading-[22px]">
+                            {Array.from({ length: Math.max(12, userCode.split('\n').length) }, (_, i) => i + 1).map(n => (
+                              <div key={n} className="h-[22px]">{n}</div>
+                            ))}
+                          </div>
+                          {/* Textarea */}
+                          <textarea
+                            value={userCode}
+                            onChange={(e) => setUserCode(e.target.value)}
+                            className="flex-grow p-5 text-slate-100 bg-transparent border-none outline-none resize-none focus:ring-0 leading-[22px] font-mono overflow-y-auto h-[285px]"
+                            spellCheck="false"
+                          />
+                        </div>
+                      </div>
 
-                      let optionStyle = 'border-border dark:border-slate-800 hover:border-primary dark:hover:border-indigo-500 bg-slate-50/50 dark:bg-slate-900';
-                      if (isSelected && !isAnswerChecked) {
-                        optionStyle = 'border-primary dark:border-indigo-400 bg-indigo-50/10 dark:bg-indigo-950/20';
-                      } else if (isAnswerChecked) {
-                        if (isCorrect) {
-                          optionStyle = 'border-green-500 bg-green-50/10 dark:bg-green-950/10 text-green-600 dark:text-green-400';
-                        } else if (isSelected && !isCorrect) {
-                          optionStyle = 'border-red-500 bg-red-50/10 dark:bg-red-950/10 text-red-600 dark:text-red-400';
-                        } else {
-                          optionStyle = 'border-border dark:border-slate-800 opacity-60 bg-slate-50/30 dark:bg-slate-900';
-                        }
-                      }
+                      {/* Compile/Run Output Console */}
+                      <div className="bg-[#080B11] border border-slate-850 rounded-2xl overflow-hidden font-mono text-xs shadow-xl">
+                        <div className="bg-[#121824] border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-400 font-bold tracking-wider uppercase">
+                          <div className="flex gap-4">
+                            <span className={compileOutput ? "text-primary border-b-2 border-primary pb-0.5" : "text-slate-400"}>Console Output</span>
+                            <span className="text-slate-500">Problems</span>
+                          </div>
+                          <span className="text-slate-500">Bash</span>
+                        </div>
+                        
+                        <div className="p-4 space-y-2 max-h-[150px] overflow-y-auto min-h-[85px] flex flex-col justify-center">
+                          {!compileOutput ? (
+                            <div className="text-slate-500 text-center py-4 italic">
+                              Run your code to see compilation outputs and test results...
+                            </div>
+                          ) : compileOutput.error ? (
+                            <div className="text-red-400 space-y-1.5">
+                              <div className="font-bold flex items-center gap-1.5"><XCircle size={14}/> {compileOutput.error}</div>
+                              <div className="text-[10px] text-red-500/80">Check your syntax, missing brackets, or variables.</div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className={`font-black flex items-center gap-1.5 pb-1 border-b border-slate-900/50 ${compileOutput.success ? 'text-green-400' : 'text-red-400'}`}>
+                                {compileOutput.success ? <CheckCircle2 size={14}/> : <XCircle size={14}/>}
+                                {compileOutput.success ? 'CONGRATULATIONS! ALL TESTS PASSED' : 'SOME TESTS FAILED'}
+                              </div>
+                              <div className="space-y-1 font-mono text-[11px]">
+                                {compileOutput.results.map((res, idx) => (
+                                  <div key={idx} className="flex justify-between items-center py-0.5">
+                                    <span className="text-slate-400">Test Case #{res.caseIdx}:</span>
+                                    <span className={res.passed ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
+                                      {res.passed ? 'PASSED' : `FAILED (Expected: ${res.expected}, Got: ${res.got})`}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                      return (
+                      {/* Buttons */}
+                      <div className="flex items-center justify-end gap-4 pt-1">
                         <button
-                          key={idx}
-                          onClick={() => handleOptionSelect(idx)}
-                          disabled={isAnswerChecked}
-                          className={`w-full text-left p-5 rounded-2xl border-2 font-bold text-base flex items-center justify-between transition-all ${optionStyle}`}
+                          onClick={handleCompileRun}
+                          className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-800 dark:border-slate-700 px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center transition-all shadow-[0_4px_0_0_rgba(15,23,42,0.15)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:translate-y-[4px] active:shadow-none hover:-translate-y-[1px]"
                         >
-                          <span>{option}</span>
-                          {isAnswerChecked && isCorrect && <CheckCircle2 className="text-green-500 flex-shrink-0 ml-2" size={22} />}
-                          {isAnswerChecked && isSelected && !isCorrect && <XCircle className="text-red-500 flex-shrink-0 ml-2" size={22} />}
+                          <Play size={14} className="mr-2 fill-current" />
+                          COMPILE & RUN
                         </button>
-                      );
-                    })}
-                  </div>
 
-                  {/* Answer Explanation */}
-                  {isAnswerChecked && (
-                    <div className={`p-5 rounded-2xl border animate-scale-up ${selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
-                        ? 'bg-green-50 dark:bg-green-950/10 border-green-200 dark:border-green-900/30 text-green-800 dark:text-green-300'
-                        : 'bg-red-50 dark:bg-red-950/10 border-red-200 dark:border-red-900/30 text-red-800 dark:text-red-300'
-                      }`}>
-                      <p className="font-black text-sm mb-1">
-                        {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? 'Correct!' : 'Incorrect'}
-                      </p>
-                      <p className="text-sm font-semibold">{activeStep.stepData.quiz[currentQuestionIdx].explanation}</p>
-                    </div>
-                  )}
-
-                  {/* Action Controls */}
-                  <div className="pt-6 flex justify-end">
-                    {!isAnswerChecked ? (
-                      <button
-                        onClick={handleCheckAnswer}
-                        disabled={selectedOption === null}
-                        className={`w-full sm:w-auto px-10 py-4 rounded-xl font-bold text-base transition-all shadow-[0_4px_0_0_rgba(67,56,202,1)] ${selectedOption !== null
-                            ? 'bg-primary text-white hover:bg-indigo-700'
-                            : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-800 dark:border-slate-800'
+                        <button
+                          onClick={handleCompleteStep}
+                          disabled={!isChallengePassed}
+                          className={`px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center transition-all ${isChallengePassed
+                            ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-[0_4px_0_0_rgba(16,185,129,0.3)] hover:-translate-y-[1px] active:translate-y-[4px] active:shadow-none'
+                            : 'bg-slate-100 text-slate-450 border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-650'
                           }`}
-                      >
-                        CHECK ANSWER
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleNextQuestion}
-                        className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-10 py-4 rounded-xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(67,56,202,1)]"
-                      >
-                        {currentQuestionIdx + 1 === activeStep.stepData.quiz.length ? 'FINISH' : 'NEXT'}
-                        <ArrowRight size={18} className="ml-1.5" />
-                      </button>
+                        >
+                          FINISH CHALLENGE
+                          <ArrowRight size={14} className="ml-1.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)] space-y-6 animate-scale-up">
+                    <div className="flex items-center justify-between">
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 rounded-full text-xs font-bold w-fit">
+                        <HelpCircle size={14} className="stroke-[2.5]" />
+                        <span>PRACTICE QUIZ</span>
+                      </div>
+                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 font-mono">
+                        Question {currentQuestionIdx + 1} of {activeStep.stepData.quiz.length}
+                      </span>
+                    </div>
+
+                    <h2 className="text-xl md:text-2xl font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight">
+                      {activeStep.stepData.quiz[currentQuestionIdx].question}
+                    </h2>
+
+                    {/* Multi-choice items */}
+                    <div className="space-y-3.5 pt-2">
+                      {activeStep.stepData.quiz[currentQuestionIdx].options.map((option, idx) => {
+                        const isSelected = selectedOption === idx;
+                        const isCorrect = activeStep.stepData.quiz[currentQuestionIdx].answerIndex === idx;
+
+                        const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D...
+
+                        let optionStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:border-primary/50 dark:hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900/70 text-text-primary dark:text-slate-300';
+                        let badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
+
+                        if (isSelected && !isAnswerChecked) {
+                          optionStyle = 'border-primary dark:border-indigo-400 bg-indigo-50/15 dark:bg-indigo-950/20 text-primary dark:text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.08)]';
+                          badgeStyle = 'bg-primary dark:bg-indigo-500 text-white';
+                        } else if (isAnswerChecked) {
+                          if (isCorrect) {
+                            optionStyle = 'border-green-500 dark:border-green-500/80 bg-green-50/15 dark:bg-green-950/20 text-green-600 dark:text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.08)]';
+                            badgeStyle = 'bg-green-500 text-white';
+                          } else if (isSelected && !isCorrect) {
+                            optionStyle = 'border-red-500 dark:border-red-500/80 bg-red-50/15 dark:bg-red-950/20 text-red-655 dark:text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.08)]';
+                            badgeStyle = 'bg-red-500 text-white';
+                          } else {
+                            optionStyle = 'border-slate-150 dark:border-slate-900/60 bg-slate-50/10 dark:bg-slate-900/10 text-slate-450 dark:text-slate-500 opacity-60';
+                            badgeStyle = 'bg-slate-100/50 dark:bg-slate-900/50 text-slate-350 dark:text-slate-650';
+                          }
+                        }
+
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => handleOptionSelect(idx)}
+                            disabled={isAnswerChecked}
+                            className={`w-full text-left p-4.5 rounded-2xl border-2 font-bold text-base flex items-center justify-between transition-all duration-200 group active:scale-[0.995] ${optionStyle}`}
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black tracking-wider transition-colors font-mono ${badgeStyle}`}>
+                                {optionLetter}
+                              </span>
+                              <span className="leading-snug">{option}</span>
+                            </div>
+                            {isAnswerChecked && isCorrect && (
+                              <div className="bg-green-500 text-white p-1 rounded-full shadow-lg animate-scale-up">
+                                <Check size={14} className="stroke-[3]" />
+                              </div>
+                            )}
+                            {isAnswerChecked && isSelected && !isCorrect && (
+                              <div className="bg-red-500 text-white p-1 rounded-full shadow-lg animate-scale-up">
+                                <X size={14} className="stroke-[3]" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Answer Explanation */}
+                    {isAnswerChecked && (
+                      <div className={`p-5 rounded-2xl border-2 animate-scale-up relative overflow-hidden ${
+                        selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
+                          ? 'bg-green-50/45 dark:bg-green-950/10 border-green-200/50 dark:border-green-900/20 text-green-800 dark:text-green-300'
+                          : 'bg-red-50/45 dark:bg-red-950/10 border-red-200/50 dark:border-red-900/20 text-red-800 dark:text-red-300'
+                      }`}>
+                        <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
+                          {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? (
+                            <CheckCircle2 size={72} />
+                          ) : (
+                            <XCircle size={72} />
+                          )}
+                        </div>
+                        <p className="font-black text-sm mb-1 uppercase tracking-wider flex items-center gap-1.5">
+                          {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? '🎉 Correct Answer!' : '💡 Incorrect Answer'}
+                        </p>
+                        <p className="text-xs font-semibold leading-relaxed opacity-90">
+                          {activeStep.stepData.quiz[currentQuestionIdx].explanation}
+                        </p>
+                      </div>
                     )}
-                  </div>
-                </div>
-              )}
 
-              {/* SUB-PHASE C: LESSON COMPLETION CELEBRATION */}
-              {lessonPhase === 'complete' && (
-                <div className="text-center py-10 space-y-8 flex flex-col items-center animate-scale-up">
-                  <div className="inline-flex items-center justify-center w-24 h-24 bg-amber-50 dark:bg-amber-950/20 rounded-full mb-2">
-                    <Trophy size={50} className="text-accent fill-accent animate-bounce" />
-                  </div>
-                  <div>
-                    <h2 className="text-3xl font-black text-text-primary dark:text-slate-100">Congratulations!</h2>
-                    <p className="text-text-secondary dark:text-slate-400 font-semibold mt-1">
-                      You finished all practice modules for "{activeStep.title}".
-                    </p>
-                  </div>
-
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800 rounded-3xl p-6 w-full max-w-sm grid grid-cols-2 gap-4">
-                    <div className="text-center">
-                      <p className="text-xs font-bold text-text-secondary dark:text-slate-400 uppercase tracking-widest mb-1">XP Gained</p>
-                      <p className="text-xl font-black text-primary dark:text-indigo-400">+10 XP</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-bold text-text-secondary dark:text-slate-400 uppercase tracking-widest mb-1">Gems Earned</p>
-                      <p className="text-xl font-black text-cyan-500">+5 Gems</p>
+                    {/* Action Controls */}
+                    <div className="pt-4 flex justify-end">
+                      {!isAnswerChecked ? (
+                        <button
+                          onClick={handleCheckAnswer}
+                          disabled={selectedOption === null}
+                          className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-bold text-base transition-all duration-200 shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none hover:-translate-y-[1px] ${selectedOption !== null
+                              ? 'bg-primary text-white hover:bg-indigo-700 shadow-[0_4px_0_0_rgba(67,56,202,0.3)]'
+                              : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600'
+                            }`}
+                        >
+                          CHECK ANSWER
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handleNextQuestion}
+                          className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-10 py-4 rounded-2xl font-bold text-base flex items-center justify-center transition-all duration-200 shadow-[0_4px_0_0_rgba(67,56,202,0.3)] hover:-translate-y-[1px] active:translate-y-[4px] active:shadow-none"
+                        >
+                          {currentQuestionIdx + 1 === activeStep.stepData.quiz.length ? 'FINISH' : 'NEXT'}
+                          <ArrowRight size={18} className="ml-1.5" />
+                        </button>
+                      )}
                     </div>
                   </div>
-
-                  <button
-                    onClick={handleCompleteStep}
-                    className="w-full max-w-sm bg-primary hover:bg-indigo-700 text-white font-bold py-4.5 rounded-2xl shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none transition-all"
-                  >
-                    CONTINUE ON ROADMAP
-                  </button>
-                </div>
+                )
               )}
+
+
 
             </div>
           </div>

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Home from './pages/Home';
+import Landing from './pages/Landing';
 import RoadmapPage from './pages/RoadmapPage';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
@@ -10,14 +11,40 @@ function App() {
     return localStorage.getItem('isAuthenticated') === 'true';
   });
 
+  const [userName, setUserName] = useState(() => {
+    return localStorage.getItem('userName') || '';
+  });
+
   const [view, setView] = useState(() => {
     const auth = localStorage.getItem('isAuthenticated') === 'true';
-    return { page: auth ? 'home' : 'login', courseName: null };
+    return { page: auth ? 'home' : 'landing', courseName: null };
   });
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetch('/api/session/verify')
+        .then(res => {
+          if (res.ok) return res.json();
+          throw new Error('Session verify failed');
+        })
+        .then(data => {
+          if (data.name) {
+            setUserName(data.name);
+            localStorage.setItem('userName', data.name);
+          }
+        })
+        .catch(err => {
+          console.error('Session verification error:', err);
+        });
+    } else {
+      setUserName('');
+      localStorage.removeItem('userName');
+    }
+  }, [isAuthenticated]);
 
   const handleNavigate = (page, courseName = null) => {
     const auth = localStorage.getItem('isAuthenticated') === 'true';
-    if (!auth && page !== 'login' && page !== 'signup') {
+    if (!auth && page !== 'login' && page !== 'signup' && page !== 'landing') {
       setView({ page: 'login', courseName: null });
     } else {
       setView({ page, courseName });
@@ -34,7 +61,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
     setIsAuthenticated(false);
-    handleNavigate('login');
+    handleNavigate('landing');
   };
 
   const renderPage = () => {
@@ -53,6 +80,7 @@ function App() {
             onNavigate={handleNavigate}
             isAuthenticated={isAuthenticated}
             onLogout={handleLogout}
+            userName={userName}
           />
         );
       case 'roadmap':
@@ -60,20 +88,23 @@ function App() {
           <RoadmapPage
             courseName={view.courseName}
             onBack={() => handleNavigate('home')}
+            isAuthenticated={isAuthenticated}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
           />
         );
       case 'login':
         return (
           <Login
             onNavigate={handleNavigate}
-            onAuthSuccess={handleAuthSuccess}
+            onAuthSuccess={handleLoginSuccess}
           />
         );
       case 'signup':
         return (
           <SignUp
             onNavigate={handleNavigate}
-            onAuthSuccess={handleAuthSuccess}
+            onAuthSuccess={handleLoginSuccess}
           />
         );
       default:
