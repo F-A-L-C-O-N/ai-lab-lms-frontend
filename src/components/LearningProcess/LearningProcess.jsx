@@ -7,7 +7,7 @@ const steps = [
     title: 'Bite-sized Lessons',
     description: 'Perfect for your commute or coffee break.',
     icon: BookOpen,
-    color: 'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400'
+    color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400'
   },
   {
     id: 2,
