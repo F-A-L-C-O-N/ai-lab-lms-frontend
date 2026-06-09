@@ -7,9 +7,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      // Forward all /api requests to the Express session server
+      // Forward all /api requests to the FastAPI backend
       '/api': {
-        target: 'http://localhost:3002',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },

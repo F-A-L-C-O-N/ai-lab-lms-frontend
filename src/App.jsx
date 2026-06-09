@@ -22,7 +22,7 @@ function App() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetch('/api/session/verify')
+      fetch('/api/v1/auth/verify', { credentials: 'include' })
         .then(res => {
           if (res.ok) return res.json();
           throw new Error('Session verify failed');
@@ -35,6 +35,12 @@ function App() {
         })
         .catch(err => {
           console.error('Session verification error:', err);
+          // Session invalid — force logout
+          localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('userName');
+          setIsAuthenticated(false);
+          setUserName('');
+          setView({ page: 'landing', courseName: null });
         });
     } else {
       setUserName('');
@@ -58,8 +64,17 @@ function App() {
     handleNavigate('home');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/v1/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
     localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('userName');
     setIsAuthenticated(false);
     handleNavigate('landing');
   };
@@ -127,4 +142,3 @@ function App() {
 }
 
 export default App;
-
