@@ -119,8 +119,43 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
                     </motion.div>
                   )}
 
+                  <form onSubmit={handleSubmit} className="space-y-6 mb-6">
+                    <div className="relative">
+                      <label htmlFor="email" className={`absolute left-10 transition-all duration-200 pointer-events-none ${isEmailFocused || email ? 'top-1.5 text-xs text-primary dark:text-indigo-400 font-semibold' : 'top-4 text-slate-400 dark:text-slate-500 text-sm'}`}>Email Address</label>
+                      <Mail className="absolute left-3 top-4 text-slate-400 dark:text-slate-500" size={18} />
+                      <input id="email" type="text" value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }} onFocus={() => setIsEmailFocused(true)} onBlur={() => setIsEmailFocused(false)} disabled={isLoading} className={`w-full pl-10 pr-4 pt-6 pb-2 bg-slate-100/50 dark:bg-slate-800/40 border rounded-2xl outline-none transition-all duration-200 text-slate-800 dark:text-slate-100 ${errors.email ? 'border-red-500 focus:border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary dark:focus:border-indigo-500 focus:ring-4 focus:ring-primary/10 dark:focus:ring-indigo-500/10'}`} />
+                      {errors.email && (<motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center space-x-1 mt-1.5 text-red-500 text-xs"><AlertCircle size={12} /><span>{errors.email}</span></motion.div>)}
+                    </div>
+                    <div className="relative">
+                      <label htmlFor="password" className={`absolute left-10 transition-all duration-200 pointer-events-none ${isPasswordFocused || password ? 'top-1.5 text-xs text-primary dark:text-indigo-400 font-semibold' : 'top-4 text-slate-400 dark:text-slate-500 text-sm'}`}>Password</label>
+                      <Lock className="absolute left-3 top-4 text-slate-400 dark:text-slate-500" size={18} />
+                      <input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }} onFocus={() => setIsPasswordFocused(true)} onBlur={() => setIsPasswordFocused(false)} disabled={isLoading} className={`w-full pl-10 pr-10 pt-6 pb-2 bg-slate-100/50 dark:bg-slate-800/40 border rounded-2xl outline-none transition-all duration-200 text-slate-800 dark:text-slate-100 ${errors.password ? 'border-red-500 focus:border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary dark:focus:border-indigo-500 focus:ring-4 focus:ring-primary/10 dark:focus:ring-indigo-500/10'}`} />
+                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-4 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+                      {errors.password && (<motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center space-x-1 mt-1.5 text-red-500 text-xs"><AlertCircle size={12} /><span>{errors.password}</span></motion.div>)}
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <label className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 cursor-pointer select-none">
+                        <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} disabled={isLoading} className="w-4.5 h-4.5 rounded border-slate-300 dark:border-slate-700 text-primary dark:text-indigo-500 focus:ring-primary dark:focus:ring-indigo-500 bg-white dark:bg-slate-800 transition" />
+                        <span>Remember me</span>
+                      </label>
+                      <a href="#" className="font-semibold text-primary dark:text-indigo-400 hover:underline">Forgot Password?</a>
+                    </div>
+                    <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center bg-primary hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-2xl shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none active:translate-y-1 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
+                      {isLoading ? <Loader2 className="animate-spin mr-2" size={18} /> : 'Sign In'}
+                    </button>
+                  </form>
+
+                  <div className="relative mb-6">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
+                    </div>
+                    <div className="relative flex justify-center text-sm">
+                      <span className="px-2 bg-white dark:bg-slate-900 text-slate-500">Or continue with</span>
+                    </div>
+                  </div>
+
                   {/* Social Login Buttons */}
-                  <div className="flex flex-col space-y-3 mb-6">
+                  <div className="flex flex-col space-y-3">
                     <button
                       type="button"
                       onClick={() => handleSocialLogin(googleProvider)}
@@ -147,41 +182,6 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
                       <span>Continue with GitHub</span>
                     </button>
                   </div>
-
-                  <div className="relative mb-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-transparent text-slate-500">Or continue with email</span>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="relative">
-                      <label htmlFor="email" className={`absolute left-10 transition-all duration-200 pointer-events-none ${isEmailFocused || email ? 'top-1.5 text-xs text-primary dark:text-indigo-400 font-semibold' : 'top-4 text-slate-400 dark:text-slate-500 text-sm'}`}>Email Address</label>
-                      <Mail className="absolute left-3 top-4 text-slate-400 dark:text-slate-500" size={18} />
-                      <input id="email" type="text" value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }} onFocus={() => setIsEmailFocused(true)} onBlur={() => setIsEmailFocused(false)} disabled={isLoading} className={`w-full pl-10 pr-4 pt-6 pb-2 bg-slate-100/50 dark:bg-slate-800/40 border rounded-2xl outline-none transition-all duration-200 text-slate-800 dark:text-slate-100 ${errors.email ? 'border-red-500 focus:border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary dark:focus:border-indigo-500 focus:ring-4 focus:ring-primary/10 dark:focus:ring-indigo-500/10'}`} />
-                      {errors.email && (<motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center space-x-1 mt-1.5 text-red-500 text-xs"><AlertCircle size={12} /><span>{errors.email}</span></motion.div>)}
-                    </div>
-                    <div className="relative">
-                      <label htmlFor="password" className={`absolute left-10 transition-all duration-200 pointer-events-none ${isPasswordFocused || password ? 'top-1.5 text-xs text-primary dark:text-indigo-400 font-semibold' : 'top-4 text-slate-400 dark:text-slate-500 text-sm'}`}>Password</label>
-                      <Lock className="absolute left-3 top-4 text-slate-400 dark:text-slate-500" size={18} />
-                      <input id="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => { setPassword(e.target.value); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }} onFocus={() => setIsPasswordFocused(true)} onBlur={() => setIsPasswordFocused(false)} disabled={isLoading} className={`w-full pl-10 pr-10 pt-6 pb-2 bg-slate-100/50 dark:bg-slate-800/40 border rounded-2xl outline-none transition-all duration-200 text-slate-800 dark:text-slate-100 ${errors.password ? 'border-red-500 focus:border-red-500 ring-2 ring-red-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary dark:focus:border-indigo-500 focus:ring-4 focus:ring-primary/10 dark:focus:ring-indigo-500/10'}`} />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-4 text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                      {errors.password && (<motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center space-x-1 mt-1.5 text-red-500 text-xs"><AlertCircle size={12} /><span>{errors.password}</span></motion.div>)}
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <label className="flex items-center space-x-2 text-slate-600 dark:text-slate-400 cursor-pointer select-none">
-                        <input type="checkbox" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} disabled={isLoading} className="w-4.5 h-4.5 rounded border-slate-300 dark:border-slate-700 text-primary dark:text-indigo-500 focus:ring-primary dark:focus:ring-indigo-500 bg-white dark:bg-slate-800 transition" />
-                        <span>Remember me</span>
-                      </label>
-                      <a href="#" className="font-semibold text-primary dark:text-indigo-400 hover:underline">Forgot Password?</a>
-                    </div>
-                    <button type="submit" disabled={isLoading} className="w-full flex items-center justify-center bg-primary hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-2xl shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none active:translate-y-1 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:pointer-events-none">
-                      {isLoading ? <Loader2 className="animate-spin mr-2" size={18} /> : 'Sign In'}
-                    </button>
-                  </form>
                   <p className="mt-8 text-center text-sm text-slate-555 dark:text-slate-400">
                     Don't have an account?{' '}
                     <button type="button" onClick={() => onNavigate('signup')} className="font-bold text-primary dark:text-indigo-400 hover:underline cursor-pointer">Sign up for free</button>
