@@ -49,7 +49,6 @@ const SignUp = ({ onNavigate, onAuthSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [termsAccepted, setTermsAccepted] = useState(false);
 
   // Interaction & UI States
   const [showPassword, setShowPassword] = useState(false);
@@ -88,10 +87,6 @@ const SignUp = ({ onNavigate, onAuthSuccess }) => {
 
     if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (!termsAccepted) {
-      newErrors.terms = 'You must accept the terms & conditions';
     }
 
     setErrors(newErrors);
@@ -406,37 +401,7 @@ const SignUp = ({ onNavigate, onAuthSuccess }) => {
                       )}
                     </div>
 
-                    {/* Terms Checkbox */}
-                    <div>
-                      <label className="flex items-start space-x-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer select-none">
-                        <input
-                          type="checkbox"
-                          checked={termsAccepted}
-                          onChange={(e) => {
-                            setTermsAccepted(e.target.checked);
-                            if (errors.terms) setErrors(prev => ({ ...prev, terms: '' }));
-                          }}
-                          disabled={isLoading}
-                          className="mt-1 w-4.5 h-4.5 rounded border-slate-300 dark:border-slate-700 text-primary dark:text-indigo-500 focus:ring-primary dark:focus:ring-indigo-500 bg-white dark:bg-slate-800 transition"
-                        />
-                        <span>
-                          I agree to the{' '}
-                          <a href="#" className="font-semibold text-primary dark:text-indigo-400 hover:underline">Terms of Service</a>
-                          {' '}and{' '}
-                          <a href="#" className="font-semibold text-primary dark:text-indigo-400 hover:underline">Privacy Policy</a>
-                        </span>
-                      </label>
-                      {errors.terms && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="flex items-center space-x-1 mt-1.5 text-red-500 text-xs"
-                        >
-                          <AlertCircle size={12} />
-                          <span>{errors.terms}</span>
-                        </motion.div>
-                      )}
-                    </div>
+
 
                     {/* Sign Up Button */}
                     <button
@@ -511,19 +476,58 @@ const SignUp = ({ onNavigate, onAuthSuccess }) => {
               ) : (
                 <motion.div
                   key="signup-success"
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
                   className="flex flex-col items-center justify-center py-12 text-center"
                 >
-                  <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/10">
-                    <CheckCircle2 size={36} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    className="relative w-20 h-20 bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/20"
+                  >
+                    {/* Ripple Ring 1 */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-green-400/30 dark:border-green-500/20"
+                      initial={{ scale: 1, opacity: 0.8 }}
+                      animate={{ scale: 1.8, opacity: 0 }}
+                      transition={{ repeat: Infinity, duration: 1.8, ease: "easeOut" }}
+                    />
+                    {/* Ripple Ring 2 */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-green-400/20 dark:border-green-500/10"
+                      initial={{ scale: 1, opacity: 0.8 }}
+                      animate={{ scale: 1.8, opacity: 0 }}
+                      transition={{ repeat: Infinity, duration: 1.8, ease: "easeOut", delay: 0.6 }}
+                    />
+                    {/* Pop-in check icon */}
+                    <motion.div
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 15, delay: 0.25 }}
+                    >
+                      <CheckCircle2 size={40} className="stroke-[2.5]" />
+                    </motion.div>
+                  </motion.div>
+
+                  <motion.h3
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45, duration: 0.5, type: 'spring', stiffness: 100 }}
+                    className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2"
+                  >
                     Account Created!
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  </motion.h3>
+
+                  <motion.p
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55, duration: 0.5, type: 'spring', stiffness: 100 }}
+                    className="text-sm text-slate-555 dark:text-slate-400 max-w-sm leading-relaxed"
+                  >
                     Welcome to AI Lab Learning Portal. Setting up your profile and dashboard...
-                  </p>
+                  </motion.p>
                 </motion.div>
               )}
             </AnimatePresence>

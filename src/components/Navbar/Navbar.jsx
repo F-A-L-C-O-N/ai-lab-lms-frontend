@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Moon, Sun } from 'lucide-react';
+import logo from '../../assets/logo.png';
 
 const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -41,9 +42,10 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
           <div className="flex items-center">
             <button
               onClick={() => onNavigate && onNavigate(isAuthenticated ? 'home' : 'landing')}
-              className="text-primary dark:text-indigo-400 font-bold text-2xl tracking-tighter cursor-pointer bg-transparent border-none p-0 focus:outline-none"
+              className="flex items-center gap-2 sm:gap-3 text-primary dark:text-indigo-400 font-bold text-lg sm:text-2xl tracking-tighter cursor-pointer bg-transparent border-none p-0 focus:outline-none"
             >
-              AI Lab Learning Portal
+              <img src={logo} alt="Logo" className="h-9 sm:h-12 w-auto object-contain" />
+              <span>AI Lab Learning Portal</span>
             </button>
           </div>
 
@@ -177,30 +179,27 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
 
       {/* Mobile Navigation */}
       {isMobileMenuOpen && (
-        <div className="md:hidden bg-white dark:bg-slate-900 border-t border-border dark:border-slate-800 shadow-lg absolute w-full left-0">
-
-            <div className="h-px bg-border dark:bg-slate-800 my-2"></div>
-
+        <div className="md:hidden bg-white dark:bg-slate-900 border border-border dark:border-slate-800 shadow-xl rounded-2xl absolute right-4 top-[68px] w-52 p-3 z-50">
             {isAuthenticated ? (
-              <div className="px-3 py-2">
+              <div className="w-full">
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     onLogout && onLogout();
                   }}
-                  className="w-full text-center py-3 text-base font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-900/40 rounded-xl transition-all cursor-pointer shadow-sm active:scale-98"
+                  className="w-full text-center py-2 text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/20 border-2 border-red-200 dark:border-red-900/40 rounded-xl transition-all cursor-pointer shadow-sm active:scale-98"
                 >
                   LOG OUT
                 </button>
               </div>
             ) : (
-              <div className="px-3 py-2 flex flex-col gap-3">
+              <div className="flex flex-col gap-2 w-full">
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     onNavigate && onNavigate('login');
                   }}
-                  className="w-full text-center py-3 text-base font-bold text-text-primary dark:text-slate-100 bg-slate-50 dark:bg-slate-800/40 border-2 border-border dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-sm active:scale-98"
+                  className="w-full text-center py-2 text-sm font-bold text-text-primary dark:text-slate-100 bg-slate-50 dark:bg-slate-800/40 border-2 border-border dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-sm active:scale-98"
                 >
                   LOG IN
                 </button>
@@ -210,7 +209,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
                     setIsMobileMenuOpen(false);
                     onNavigate && onNavigate('signup');
                   }}
-                  className="w-full bg-primary text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer"
+                  className="w-full bg-primary text-white font-bold py-2 text-sm rounded-xl shadow-[0_3px_0_0_rgba(67,56,202,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer text-center"
                 >
                   GET STARTED
                 </button>

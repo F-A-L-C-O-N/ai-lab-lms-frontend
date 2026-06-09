@@ -62,11 +62,11 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
   const [isEmailFocused, setIsEmailFocused] = useState(false);
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
 
-  const validateForm = () => {
+  const validateForm = (emailValue) => {
     const newErrors = {};
-    if (!email) {
+    if (!emailValue) {
       newErrors.email = 'Email address is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
+    } else if (!/\S+@\S+\.\S+/.test(emailValue)) {
       newErrors.email = 'Please enter a valid email address';
     }
 
@@ -82,14 +82,16 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    const trimmedEmail = email.trim();
+    setEmail(trimmedEmail);
+    if (!validateForm(trimmedEmail)) return;
 
     setIsLoading(true);
     setFirebaseError('');
 
     try {
       // 1. Authenticate with Firebase
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
       // 2. Create server-side httpOnly session cookie
       await createSessionCookie(userCredential.user);
       // 3. Sign out from Firebase client — cookie is now the single auth source
@@ -399,19 +401,58 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
               ) : (
                 <motion.div
                   key="login-success"
-                  initial={{ opacity: 0, scale: 0.9 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
                   className="flex flex-col items-center justify-center py-12 text-center"
                 >
-                  <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/10">
-                    <CheckCircle2 size={36} />
-                  </div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 260, damping: 20 }}
+                    className="relative w-20 h-20 bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/20"
+                  >
+                    {/* Ripple Ring 1 */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-green-400/30 dark:border-green-500/20"
+                      initial={{ scale: 1, opacity: 0.8 }}
+                      animate={{ scale: 1.8, opacity: 0 }}
+                      transition={{ repeat: Infinity, duration: 1.8, ease: "easeOut" }}
+                    />
+                    {/* Ripple Ring 2 */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full border-2 border-green-400/20 dark:border-green-500/10"
+                      initial={{ scale: 1, opacity: 0.8 }}
+                      animate={{ scale: 1.8, opacity: 0 }}
+                      transition={{ repeat: Infinity, duration: 1.8, ease: "easeOut", delay: 0.6 }}
+                    />
+                    {/* Pop-in check icon */}
+                    <motion.div
+                      initial={{ scale: 0, rotate: -90 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 15, delay: 0.25 }}
+                    >
+                      <CheckCircle2 size={40} className="stroke-[2.5]" />
+                    </motion.div>
+                  </motion.div>
+
+                  <motion.h3
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45, duration: 0.5, type: 'spring', stiffness: 100 }}
+                    className="text-2xl font-black text-slate-800 dark:text-slate-100 mb-2"
+                  >
                     Welcome back!
-                  </h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  </motion.h3>
+
+                  <motion.p
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.55, duration: 0.5, type: 'spring', stiffness: 100 }}
+                    className="text-sm text-slate-555 dark:text-slate-400 max-w-sm leading-relaxed"
+                  >
                     Successfully authenticated. Redirecting you to AI Lab Learning Portal dashboard...
-                  </p>
+                  </motion.p>
                 </motion.div>
               )}
             </AnimatePresence>

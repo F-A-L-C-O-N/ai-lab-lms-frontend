@@ -1,5 +1,15 @@
 import React from 'react';
-import { Star, Clock, Zap } from 'lucide-react';
+import { Star } from 'lucide-react';
+import { roadmapData } from '../../data/roadmapData';
+
+const getProgress = (name) => {
+  const steps = roadmapData[name] || [];
+  if (steps.length === 0) return 0;
+  const completedSteps = JSON.parse(localStorage.getItem('AI Lab Learning Portal_completed_steps') || '{}');
+  const completedList = completedSteps[name] || [];
+  const totalMilestones = steps.length * 2 + 1;
+  return Math.round((completedList.length / totalMilestones) * 100);
+};
 
 const tracks = [
   {
@@ -76,16 +86,18 @@ const PopularTracks = ({ onCardClick }) => {
               </div>
               
               <h3 className="text-lg font-bold text-text-primary dark:text-slate-100 mb-2 line-clamp-2">{track.title}</h3>
-              <p className="text-sm text-text-secondary dark:text-slate-400 mb-6 flex-grow">{track.description}</p>
+              <p className="text-sm text-text-secondary dark:text-slate-400 mb-4 flex-grow">{track.description}</p>
               
-              <div className="flex items-center justify-between text-sm font-bold text-text-secondary dark:text-slate-400 pt-4 border-t border-border dark:border-slate-800">
-                <div className="flex items-center">
-                  <Clock size={16} className="mr-1" />
-                  <span>{track.time}</span>
+              <div className="pt-4 border-t border-border dark:border-slate-800 mt-auto">
+                <div className="flex justify-between items-center text-xs font-bold text-text-secondary dark:text-slate-400 mb-2">
+                  <span>Progress</span>
+                  <span className="text-primary dark:text-indigo-400">{getProgress(track.title)}%</span>
                 </div>
-                <div className="flex items-center text-primary dark:text-indigo-400">
-                  <Zap size={16} className="fill-primary dark:fill-indigo-400 mr-1" />
-                  <span>+{track.xp} XP</span>
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden p-[1px] border border-slate-200/50 dark:border-slate-750">
+                  <div 
+                    className="bg-gradient-to-r from-primary to-indigo-500 h-full rounded-full transition-all duration-500" 
+                    style={{ width: `${getProgress(track.title)}%` }}
+                  />
                 </div>
               </div>
             </div>

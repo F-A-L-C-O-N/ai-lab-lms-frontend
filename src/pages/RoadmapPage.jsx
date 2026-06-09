@@ -5,6 +5,177 @@ import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { roadmapData } from '../data/roadmapData';
 
+const transpilePythonToJS = (pyCode) => {
+  let code = pyCode;
+  let lines = code.split('\n');
+  let indentStack = [0];
+  let resultLines = [];
+  
+  const polyfills = `
+    const len = (x) => x && typeof x.length !== 'undefined' ? x.length : (x.size || 0);
+    const sum = (x) => Array.isArray(x) ? x.reduce((a, b) => a + b, 0) : 0;
+    const min = (x) => Array.isArray(x) ? Math.min(...x) : Math.min(x);
+    const max = (x) => Array.isArray(x) ? Math.max(...x) : Math.max(x);
+    const abs = Math.abs;
+    const round = (val, dec) => dec ? Number(val.toFixed(dec)) : Math.round(val);
+    const pow = Math.pow;
+    const set = (x) => new Set(x);
+    const isinstance = (x, t) => {
+      if (t === list || t === 'list') return Array.isArray(x);
+      if (t === str || t === 'str') return typeof x === 'string';
+      if (t === int || t === 'int' || t === float || t === 'float') return typeof x === 'number';
+      return false;
+    };
+    const list = 'list';
+    const str = 'str';
+    const int = 'int';
+    const float = 'float';
+    const math = {
+      exp: Math.exp,
+      sqrt: Math.sqrt,
+      pow: Math.pow,
+      pi: Math.PI
+    };
+    const np = {
+      exp: (x) => Array.isArray(x) ? x.map(Math.exp) : Math.exp(x),
+      sqrt: (x) => Array.isArray(x) ? x.map(Math.sqrt) : Math.sqrt(x),
+      min: (x) => Array.isArray(x) ? Math.min(...x) : Math.min(x),
+      max: (x) => Array.isArray(x) ? Math.max(...x) : Math.max(x),
+      mean: (x) => Array.isArray(x) ? sum(x)/x.length : x,
+      std: (x) => {
+        if (!Array.isArray(x)) return 0;
+        const m = sum(x)/x.length;
+        return Math.sqrt(sum(x.map(v => Math.pow(v - m, 2))) / x.length);
+      },
+      maximum: (a, b) => {
+        if (Array.isArray(b)) {
+          return b.map(v => Math.max(a, v));
+        }
+        if (Array.isArray(a)) {
+          return a.map(v => Math.max(v, b));
+        }
+        return Math.max(a, b);
+      }
+    };
+    const zip = (a, b) => {
+      const len = Math.min(a.length, b.length);
+      const res = [];
+      for(let i=0; i<len; i++) res.push([a[i], b[i]]);
+      return res;
+    };
+    const re = {
+      sub: (pattern, repl, string) => {
+        const cleanPattern = pattern.replace(/^r['"]|['"]$/g, '');
+        return string.replace(new RegExp(cleanPattern, 'g'), repl);
+      }
+    };
+  `;
+
+  for (let i = 0; i < lines.length; i++) {
+    let rawLine = lines[i];
+    if (rawLine.trim() === '' || rawLine.trim().startsWith('#')) {
+      resultLines.push(rawLine.replace(/#.*/, (m) => '//' + m.slice(1)));
+      continue;
+    }
+
+    let indent = rawLine.match(/^ */)[0].length;
+    while (indent < indentStack[indentStack.length - 1]) {
+      indentStack.pop();
+      resultLines.push(' '.repeat(indentStack[indentStack.length - 1]) + '}');
+    }
+
+    let line = rawLine.trim();
+
+    if (line.startsWith('import ') || line.startsWith('from ')) {
+      resultLines.push(' '.repeat(indent) + '// ' + line);
+      continue;
+    }
+
+    // def statement
+    const defMatch = line.match(/^def\s+(\w+)\s*\((.*?)\)\s*:/);
+    if (defMatch) {
+      const [_, funcName, args] = defMatch;
+      resultLines.push(' '.repeat(indent) + `function ${funcName}(${args}) {`);
+      indentStack.push(indent + 4);
+      continue;
+    }
+
+    // if/elif/else statements
+    const ifMatch = line.match(/^(if|elif)\s+(.*?)\s*:/);
+    if (ifMatch) {
+      const [_, keyword, condition] = ifMatch;
+      const jsKeyword = keyword === 'elif' ? 'else if' : 'if';
+      let jsCond = condition
+        .replace(/\band\b/g, '&&')
+        .replace(/\bor\b/g, '||')
+        .replace(/\bnot\b/g, '!')
+        .replace(/\bNone\b/g, 'null');
+      resultLines.push(' '.repeat(indent) + `${jsKeyword} (${jsCond}) {`);
+      indentStack.push(indent + 4);
+      continue;
+    }
+
+    const elseMatch = line.match(/^else\s*:/);
+    if (elseMatch) {
+      resultLines.push(' '.repeat(indent) + `else {`);
+      indentStack.push(indent + 4);
+      continue;
+    }
+
+    // for loop statement
+    const forMatch = line.match(/^for\s+(\w+)\s+in\s+(.*?)\s*:/);
+    if (forMatch) {
+      const [_, item, listName] = forMatch;
+      resultLines.push(' '.repeat(indent) + `for (let ${item} of ${listName}) {`);
+      indentStack.push(indent + 4);
+      continue;
+    }
+
+    // Generator expressions in functions
+    let genExpRegex = /(\w+)\(\s*(.*?)\s+for\s+([^ ]+)\s+in\s+([^\)]+)\)/g;
+    let lineProcessed = line.replace(genExpRegex, (match, func, expr, variable, iterable) => {
+      if (variable.includes(',')) {
+        const vars = variable.split(',').map(v => v.trim());
+        return `${func}((${iterable}).map(([${vars.join(', ')}]) => ${expr}))`;
+      }
+      return `${func}((${iterable}).map((${variable}) => ${expr}))`;
+    });
+
+    // List comprehensions
+    let listCompRegex = /\[\s*(.*?)\s+for\s+([^ ]+)\s+in\s+([^\]]+)\]/g;
+    lineProcessed = lineProcessed.replace(listCompRegex, (match, expr, variable, iterable) => {
+      if (variable.includes(',')) {
+        const vars = variable.split(',').map(v => v.trim());
+        return `(${iterable}).map(([${vars.join(', ')}]) => ${expr})`;
+      }
+      return `(${iterable}).map((${variable}) => ${expr})`;
+    });
+
+    // List repetition
+    let listRepRegex = /(\[[^\]]+\])\s*\*\s*([^\s;]+)/g;
+    lineProcessed = lineProcessed.replace(listRepRegex, 'Array($2).fill($1[0])');
+
+    // split() without arguments
+    lineProcessed = lineProcessed.replace(/\.split\(\)/g, '.trim().split(/\\s+/)');
+
+    lineProcessed = lineProcessed
+      .replace(/\bTrue\b/g, 'true')
+      .replace(/\bFalse\b/g, 'false')
+      .replace(/\bNone\b/g, 'null')
+      .replace(/\bpass\b/g, '')
+      .replace(/#.*/, (m) => '//' + m.slice(1));
+
+    resultLines.push(' '.repeat(indent) + lineProcessed);
+  }
+
+  while (indentStack.length > 1) {
+    indentStack.pop();
+    resultLines.push(' '.repeat(indentStack[indentStack.length - 1]) + '}');
+  }
+
+  return polyfills + '\n' + resultLines.join('\n');
+};
+
 const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout }) => {
   const steps = roadmapData[courseName] || [];
 
@@ -33,6 +204,13 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const [userCode, setUserCode] = useState('');
   const [compileOutput, setCompileOutput] = useState(null);
   const [isChallengePassed, setIsChallengePassed] = useState(false);
+
+  const gutterRef = React.useRef(null);
+  const handleEditorScroll = (e) => {
+    if (gutterRef.current) {
+      gutterRef.current.scrollTop = e.target.scrollTop;
+    }
+  };
 
   // Helper to determine milestone lock/complete status
   const isMilestoneCompleted = (milestone) => {
@@ -78,8 +256,9 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     if (!challenge) return;
 
     try {
+      const jsCode = transpilePythonToJS(userCode);
       const userFunc = new Function(`
-        ${userCode}
+        ${jsCode}
         try { return minMaxNormalize; } catch(e){}
         try { return relu; } catch(e){}
         try { return tokenize; } catch(e){}
@@ -297,6 +476,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
   // Path reference state for dynamic SVG path measurements
   const [pathElement, setPathElement] = useState(null);
+  const [milestoneDistances, setMilestoneDistances] = useState([]);
   const [currentAnimatedIndex, setCurrentAnimatedIndex] = useState(0);
   const [carCoords, setCarCoords] = useState({ x: 300, y: 100, angle: 90 });
   const [isMoving, setIsMoving] = useState(false);
@@ -316,6 +496,37 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
   const fullPathD = getFullPathD();
 
+  // Calculate exact distances along the path for all milestones
+  useEffect(() => {
+    if (!pathElement || milestones.length === 0) return;
+
+    const distances = [0];
+    const svgNS = "http://www.w3.org/2000/svg";
+    const tempSvg = document.createElementNS(svgNS, "svg");
+    tempSvg.style.position = "absolute";
+    tempSvg.style.width = "0";
+    tempSvg.style.height = "0";
+    tempSvg.style.visibility = "hidden";
+    document.body.appendChild(tempSvg);
+
+    const start = getMilestoneCoords(0, milestones.length);
+    let d = `M ${start.X} ${start.Y}`;
+    
+    for (let i = 0; i < milestones.length - 1; i++) {
+      const s = getMilestoneCoords(i, milestones.length);
+      const e = getMilestoneCoords(i + 1, milestones.length);
+      d += ` C ${s.X} ${s.Y + 90}, ${e.X} ${e.Y - 90}, ${e.X} ${e.Y}`;
+      
+      const tempPath = document.createElementNS(svgNS, "path");
+      tempPath.setAttribute("d", d);
+      tempSvg.appendChild(tempPath);
+      distances.push(tempPath.getTotalLength());
+    }
+
+    document.body.removeChild(tempSvg);
+    setMilestoneDistances(distances);
+  }, [pathElement, milestones.length]);
+
   // Handle vehicle movement animation when completed steps update
   useEffect(() => {
     const newActiveIdx = milestones.findIndex((m, idx) => getMilestoneStatus(m, idx) === 'current');
@@ -323,10 +534,21 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
     // Helper to update car coordinates
     const updateCoords = (val) => {
-      if (!pathElement) return;
+      if (!pathElement || milestoneDistances.length === 0) return;
       const pathLength = pathElement.getTotalLength();
-      const progress = val / (milestones.length - 1);
-      const distance = progress * pathLength;
+      
+      const segmentIdx = Math.floor(val);
+      const t = val - segmentIdx;
+      
+      let distance = 0;
+      if (segmentIdx >= milestoneDistances.length - 1) {
+        distance = milestoneDistances[milestoneDistances.length - 1];
+      } else {
+        const startDist = milestoneDistances[segmentIdx];
+        const endDist = milestoneDistances[segmentIdx + 1];
+        distance = startDist + t * (endDist - startDist);
+      }
+
       const pt = pathElement.getPointAtLength(distance);
       const ptAhead = pathElement.getPointAtLength(Math.min(pathLength, distance + 1));
       const angle = Math.atan2(ptAhead.y - pt.y, ptAhead.x - pt.x) * (180 / Math.PI);
@@ -365,14 +587,25 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     } else {
       updateCoords(targetIdx);
     }
-  }, [completedList.join(','), pathElement, milestones.length]);
+  }, [completedList.join(','), pathElement, milestones.length, milestoneDistances]);
 
   // Compute trails
   const getTrailParticles = () => {
-    if (!pathElement) return [];
+    if (!pathElement || milestoneDistances.length === 0) return [];
     const pathLength = pathElement.getTotalLength();
-    const progress = currentAnimatedIndex / (milestones.length - 1);
-    const distance = progress * pathLength;
+    
+    const val = currentAnimatedIndex;
+    const segmentIdx = Math.floor(val);
+    const t = val - segmentIdx;
+    
+    let distance = 0;
+    if (segmentIdx >= milestoneDistances.length - 1) {
+      distance = milestoneDistances[milestoneDistances.length - 1];
+    } else {
+      const startDist = milestoneDistances[segmentIdx];
+      const endDist = milestoneDistances[segmentIdx + 1];
+      distance = startDist + t * (endDist - startDist);
+    }
 
     const particles = [];
     const offsets = [12, 24, 36];
@@ -788,7 +1021,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
         <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 transition-colors duration-300">
 
           {/* Immersive Top Bar */}
-          <div className="max-w-4xl w-full mx-auto px-4 md:px-6 pt-6 pb-4 flex items-center space-x-6">
+          <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%]' : 'max-w-4xl'} w-full mx-auto px-4 md:px-6 pt-6 pb-4 flex items-center space-x-6`}>
             <button
               onClick={() => setViewMode('roadmap')}
               className="text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -816,7 +1049,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
           {/* Immersive Body Area */}
           <div className="flex-grow flex items-center justify-center p-4">
-            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-5xl' : 'max-w-xl'} w-full py-8 md:py-12`}>
+            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%] py-4 md:py-6' : 'max-w-xl py-8 md:py-12'} w-full`}>
 
               {/* SUB-PHASE A: STUDY SLIDE */}
               {lessonPhase === 'study' && (
@@ -881,13 +1114,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   </div>
                 </div>
               )}
-
               {/* SUB-PHASE B: ACTIVE PRACTICE QUIZ */}
               {lessonPhase === 'quiz' && (
                 activeStep.type === 'challenge' ? (
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[550px] animate-scale-up bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[600px] animate-scale-up bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-5 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
                     {/* Left Column: Challenge Description & Test Cases */}
-                    <div className="lg:col-span-5 flex flex-col justify-between space-y-6">
+                    <div className="lg:col-span-4 flex flex-col justify-between space-y-6">
                       <div className="space-y-5">
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-primary dark:text-indigo-400 rounded-full text-xs font-bold w-fit">
                           <Code size={14} className="stroke-[2.5]" />
@@ -928,10 +1160,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       </div>
                     </div>
 
-                    {/* Right Column: Code Editor & Console Output */}
-                    <div className="lg:col-span-7 flex flex-col space-y-5">
+                    {/* Right Column: Code Editor & Console Output Panel */}
+                    <div className="lg:col-span-8 flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl min-h-[600px]">
                       {/* Interactive Code Editor */}
-                      <div className="flex-grow flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl relative">
+                      <div className="flex-grow flex flex-col relative">
                         {/* Chrome window header */}
                         <div className="bg-[#121824] border-b border-slate-850 px-4 flex items-center justify-between text-xs text-slate-400">
                           <div className="flex items-center">
@@ -945,21 +1177,21 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             <div className="flex pt-1.5">
                               <span className="bg-[#0B0F19] border-t-2 border-primary text-slate-100 px-4 py-2 font-mono flex items-center gap-1.5 rounded-t-lg text-[11px] border-x border-slate-850">
                                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"/>
-                                solution.js
-                              </span>
-                              <span className="px-4 py-2 font-mono text-slate-500 flex items-center gap-1.5 text-[11px] cursor-not-allowed">
-                                tests.js
+                                solution.py
                               </span>
                             </div>
                           </div>
-                          <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono">JavaScript</span>
+                          <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono">Python</span>
                         </div>
                         
                         {/* Code Editor Body with Line Numbers */}
-                        <div className="flex-grow flex font-mono text-sm leading-[22px] min-h-[285px]">
+                        <div className="flex font-mono text-sm leading-[22px] h-[420px] overflow-hidden">
                           {/* Line numbers gutter */}
-                          <div className="bg-[#080B11]/85 text-slate-650 select-none py-5 px-3.5 text-right border-r border-slate-900/60 flex flex-col font-mono text-[11px] leading-[22px]">
-                            {Array.from({ length: Math.max(12, userCode.split('\n').length) }, (_, i) => i + 1).map(n => (
+                          <div 
+                            ref={gutterRef}
+                            className="bg-[#080B11]/85 text-slate-650 select-none py-5 px-3.5 text-right border-r border-slate-900/60 flex flex-col font-mono text-[11px] leading-[22px] overflow-hidden h-[420px]"
+                          >
+                            {Array.from({ length: Math.max(18, userCode.split('\n').length) }, (_, i) => i + 1).map(n => (
                               <div key={n} className="h-[22px]">{n}</div>
                             ))}
                           </div>
@@ -967,23 +1199,27 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           <textarea
                             value={userCode}
                             onChange={(e) => setUserCode(e.target.value)}
-                            className="flex-grow p-5 text-slate-100 bg-transparent border-none outline-none resize-none focus:ring-0 leading-[22px] font-mono overflow-y-auto h-[285px]"
+                            onScroll={handleEditorScroll}
+                            className="flex-grow p-5 text-slate-100 bg-transparent border-none outline-none resize-none focus:ring-0 leading-[22px] font-mono overflow-y-auto whitespace-pre h-[420px]"
                             spellCheck="false"
                           />
                         </div>
                       </div>
 
+                      {/* Thin Split Divider */}
+                      <div className="border-t border-slate-850/80"></div>
+
                       {/* Compile/Run Output Console */}
-                      <div className="bg-[#080B11] border border-slate-850 rounded-2xl overflow-hidden font-mono text-xs shadow-xl">
+                      <div className="bg-[#080B11] flex flex-col font-mono text-xs">
                         <div className="bg-[#121824] border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-400 font-bold tracking-wider uppercase">
                           <div className="flex gap-4">
                             <span className={compileOutput ? "text-primary border-b-2 border-primary pb-0.5" : "text-slate-400"}>Console Output</span>
-                            <span className="text-slate-500">Problems</span>
+    
                           </div>
                           <span className="text-slate-500">Bash</span>
                         </div>
                         
-                        <div className="p-4 space-y-2 max-h-[150px] overflow-y-auto min-h-[85px] flex flex-col justify-center">
+                        <div className="p-4 space-y-2 max-h-[150px] overflow-y-auto min-h-[85px] flex flex-col justify-center bg-[#080B11]">
                           {!compileOutput ? (
                             <div className="text-slate-500 text-center py-4 italic">
                               Run your code to see compilation outputs and test results...
@@ -1012,29 +1248,29 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             </div>
                           )}
                         </div>
-                      </div>
 
-                      {/* Buttons */}
-                      <div className="flex items-center justify-end gap-4 pt-1">
-                        <button
-                          onClick={handleCompileRun}
-                          className="bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-800 dark:border-slate-700 px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center transition-all shadow-[0_4px_0_0_rgba(15,23,42,0.15)] dark:shadow-[0_4px_0_0_rgba(0,0,0,0.4)] active:translate-y-[4px] active:shadow-none hover:-translate-y-[1px]"
-                        >
-                          <Play size={14} className="mr-2 fill-current" />
-                          COMPILE & RUN
-                        </button>
+                        {/* Integrated Controls Footer Toolbar */}
+                        <div className="bg-[#121824]/90 border-t border-slate-850/80 px-4 py-3 flex items-center justify-end gap-3">
+                          <button
+                            onClick={handleCompileRun}
+                            className="bg-[#1E293B] hover:bg-[#334155] text-slate-100 border border-slate-700/50 px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center transition-all active:scale-95"
+                          >
+                            <Play size={12} className="mr-1.5 fill-current" />
+                            COMPILE & RUN
+                          </button>
 
-                        <button
-                          onClick={handleCompleteStep}
-                          disabled={!isChallengePassed}
-                          className={`px-8 py-3.5 rounded-2xl font-bold text-sm flex items-center justify-center transition-all ${isChallengePassed
-                            ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-[0_4px_0_0_rgba(16,185,129,0.3)] hover:-translate-y-[1px] active:translate-y-[4px] active:shadow-none'
-                            : 'bg-slate-100 text-slate-450 border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-650'
-                          }`}
-                        >
-                          FINISH CHALLENGE
-                          <ArrowRight size={14} className="ml-1.5" />
-                        </button>
+                          <button
+                            onClick={handleCompleteStep}
+                            disabled={!isChallengePassed}
+                            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center transition-all active:scale-95 ${isChallengePassed
+                              ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/10'
+                              : 'bg-slate-800/50 text-slate-500 border border-slate-800/80 cursor-not-allowed'
+                            }`}
+                          >
+                            FINISH CHALLENGE
+                            <ArrowRight size={12} className="ml-1" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
