@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, BookOpen, CheckCircle2, XCircle, Trophy, ArrowRight, Check, Lock, Play, ArrowLeft, Flame, Target, Medal, Code, HelpCircle } from 'lucide-react';
 import { motion, animate } from 'framer-motion';
 import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { roadmapData } from '../data/roadmapData';
+import PythonEditor from '../components/PythonEditor';
 
 const transpilePythonToJS = (pyCode) => {
   let code = pyCode;
@@ -205,12 +206,42 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const [compileOutput, setCompileOutput] = useState(null);
   const [isChallengePassed, setIsChallengePassed] = useState(false);
 
-  const gutterRef = React.useRef(null);
-  const handleEditorScroll = (e) => {
-    if (gutterRef.current) {
-      gutterRef.current.scrollTop = e.target.scrollTop;
-    }
-  };
+
+
+  // Draggable divider between editor and console
+  const [editorHeight, setEditorHeight] = useState(420);
+  const [isDragging, setIsDragging] = useState(false);
+  const editorConsoleRef = React.useRef(null);
+  const dragStartY = React.useRef(0);
+  const dragStartHeight = React.useRef(420);
+
+  const handleDragStart = useCallback((e) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartY.current = e.clientY || e.touches?.[0]?.clientY || 0;
+    dragStartHeight.current = editorHeight;
+  }, [editorHeight]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleDragMove = (e) => {
+      const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
+      const delta = clientY - dragStartY.current;
+      const newHeight = Math.max(150, Math.min(600, dragStartHeight.current + delta));
+      setEditorHeight(newHeight);
+    };
+    const handleDragEnd = () => setIsDragging(false);
+    window.addEventListener('mousemove', handleDragMove);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchmove', handleDragMove);
+    window.addEventListener('touchend', handleDragEnd);
+    return () => {
+      window.removeEventListener('mousemove', handleDragMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleDragMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [isDragging]);
 
   // Helper to determine milestone lock/complete status
   const isMilestoneCompleted = (milestone) => {
@@ -1048,8 +1079,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
           </div>
 
           {/* Immersive Body Area */}
-          <div className="flex-grow flex items-center justify-center p-4">
-            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%] py-4 md:py-6' : 'max-w-xl py-8 md:py-12'} w-full`}>
+          <div className={`flex-grow flex ${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'items-start' : 'items-center'} justify-center p-4`}>
+            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%] py-2 md:py-3' : 'max-w-xl py-8 md:py-12'} w-full`}>
 
               {/* SUB-PHASE A: STUDY SLIDE */}
               {lessonPhase === 'study' && (
@@ -1161,9 +1192,9 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     </div>
 
                     {/* Right Column: Code Editor & Console Output Panel */}
-                    <div className="lg:col-span-8 flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl min-h-[600px]">
+                    <div className="lg:col-span-8 flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '650px' }}>
                       {/* Interactive Code Editor */}
-                      <div className="flex-grow flex flex-col relative">
+                      <div className="flex flex-col relative">
                         {/* Chrome window header */}
                         <div className="bg-[#121824] border-b border-slate-850 px-4 flex items-center justify-between text-xs text-slate-400">
                           <div className="flex items-center">
@@ -1184,34 +1215,42 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono">Python</span>
                         </div>
                         
-                        {/* Code Editor Body with Line Numbers */}
-                        <div className="flex font-mono text-sm leading-[22px] h-[420px] overflow-hidden">
-                          {/* Line numbers gutter */}
-                          <div 
-                            ref={gutterRef}
-                            className="bg-[#080B11]/85 text-slate-650 select-none py-5 px-3.5 text-right border-r border-slate-900/60 flex flex-col font-mono text-[11px] leading-[22px] overflow-hidden h-[420px]"
-                          >
-                            {Array.from({ length: Math.max(18, userCode.split('\n').length) }, (_, i) => i + 1).map(n => (
-                              <div key={n} className="h-[22px]">{n}</div>
-                            ))}
-                          </div>
-                          {/* Textarea */}
-                          <textarea
-                            value={userCode}
-                            onChange={(e) => setUserCode(e.target.value)}
-                            onScroll={handleEditorScroll}
-                            className="flex-grow p-5 text-slate-100 bg-transparent border-none outline-none resize-none focus:ring-0 leading-[22px] font-mono overflow-y-auto whitespace-pre h-[420px]"
-                            spellCheck="false"
-                          />
+                        {/* Code Editor Body - CodeMirror */}
+                        <PythonEditor
+                          value={userCode}
+                          onChange={setUserCode}
+                          height={editorHeight}
+                        />
+                      </div>
+
+                      {/* Draggable Split Divider */}
+                      <div
+                        onMouseDown={handleDragStart}
+                        onTouchStart={handleDragStart}
+                        className={`group relative flex items-center justify-center cursor-row-resize select-none transition-colors duration-150 ${
+                          isDragging ? 'bg-primary/20' : 'hover:bg-slate-700/40'
+                        }`}
+                        style={{ height: '8px' }}
+                      >
+                        {/* Accent line */}
+                        <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] transition-colors duration-150 ${
+                          isDragging ? 'bg-primary' : 'bg-slate-700/80 group-hover:bg-slate-500'
+                        }`} />
+                        {/* Grab handle dots */}
+                        <div className={`relative flex items-center gap-0.5 px-2 py-0.5 rounded-full transition-colors duration-150 ${
+                          isDragging ? 'bg-primary/30' : 'bg-slate-800 group-hover:bg-slate-700'
+                        }`}>
+                          <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+                          <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+                          <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+                          <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
+                          <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
                         </div>
                       </div>
 
-                      {/* Thin Split Divider */}
-                      <div className="border-t border-slate-850/80"></div>
-
                       {/* Compile/Run Output Console */}
-                      <div className="bg-[#080B11] flex flex-col font-mono text-xs">
-                        <div className="bg-[#121824] border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-400 font-bold tracking-wider uppercase">
+                      <div className="bg-[#080B11] flex flex-col font-mono text-xs flex-1 min-h-0">
+                        <div className="bg-[#121824] border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-400 font-bold tracking-wider uppercase flex-shrink-0">
                           <div className="flex gap-4">
                             <span className={compileOutput ? "text-primary border-b-2 border-primary pb-0.5" : "text-slate-400"}>Console Output</span>
     
@@ -1219,7 +1258,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           <span className="text-slate-500">Bash</span>
                         </div>
                         
-                        <div className="p-4 space-y-2 max-h-[150px] overflow-y-auto min-h-[85px] flex flex-col justify-center bg-[#080B11]">
+                        <div className="p-4 space-y-2 overflow-y-auto flex-1 flex flex-col justify-center bg-[#080B11]">
                           {!compileOutput ? (
                             <div className="text-slate-500 text-center py-4 italic">
                               Run your code to see compilation outputs and test results...

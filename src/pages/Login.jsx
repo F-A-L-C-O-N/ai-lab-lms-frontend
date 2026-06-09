@@ -95,7 +95,7 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
             <div className="relative z-20 flex flex-col h-full justify-between">
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center font-black text-sm tracking-tight text-white shadow-lg shadow-primary/30">AI</div>
-                <span className="font-black tracking-wider text-sm uppercase text-slate-200">AI LAB</span>
+                <span className="font-black tracking-wider text-sm uppercase text-slate-200">AI Lab Learning Portal</span>
               </div>
               <div className="space-y-3">
                 <h3 className="text-xl font-bold tracking-tight leading-snug">Empower your mind with Artificial Intelligence.</h3>
@@ -188,10 +188,102 @@ const Login = ({ onNavigate, onAuthSuccess }) => {
                   </p>
                 </motion.div>
               ) : (
-                <motion.div key="login-success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-green-500/10"><CheckCircle2 size={36} /></div>
-                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-2">Welcome back!</h3>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Successfully authenticated. Redirecting you to AI Lab Learning Portal dashboard...</p>
+                <motion.div key="login-success" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="flex flex-col items-center justify-center py-16 text-center relative overflow-hidden">
+                  
+                  {/* Sparkle particles */}
+                  {[...Array(6)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{
+                        opacity: [0, 1, 0],
+                        scale: [0, 1, 0],
+                        x: [0, (i % 2 === 0 ? 1 : -1) * (30 + i * 15)],
+                        y: [0, -(20 + i * 12)],
+                      }}
+                      transition={{ duration: 1.5, delay: 0.3 + i * 0.1, ease: "easeOut" }}
+                      className="absolute top-1/3 left-1/2"
+                      style={{ marginLeft: `${(i - 3) * 12}px` }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10">
+                        <path d="M5 0L6 4L10 5L6 6L5 10L4 6L0 5L4 4Z" fill={i % 2 === 0 ? '#818cf8' : '#34d399'} />
+                      </svg>
+                    </motion.div>
+                  ))}
+
+                  {/* Animated success icon with ripple */}
+                  <div className="relative mb-8">
+                    {/* Ripple rings */}
+                    {[0, 1, 2].map((i) => (
+                      <motion.div
+                        key={`ring-${i}`}
+                        initial={{ opacity: 0.6, scale: 0.8 }}
+                        animate={{ opacity: 0, scale: 2.2 }}
+                        transition={{ duration: 2, delay: 0.5 + i * 0.4, repeat: Infinity, ease: "easeOut" }}
+                        className="absolute inset-0 rounded-full border-2 border-emerald-400/40 dark:border-emerald-500/30"
+                      />
+                    ))}
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
+                      className="relative w-20 h-20 rounded-full flex items-center justify-center"
+                      style={{
+                        background: 'linear-gradient(135deg, #059669 0%, #34d399 50%, #6ee7b7 100%)',
+                        boxShadow: '0 0 30px rgba(52, 211, 153, 0.4), 0 0 60px rgba(52, 211, 153, 0.15), inset 0 1px 1px rgba(255,255,255,0.3)',
+                      }}
+                    >
+                      <motion.div
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{ delay: 0.4, duration: 0.5 }}
+                      >
+                        <CheckCircle2 size={40} className="text-white drop-shadow-lg" strokeWidth={2.5} />
+                      </motion.div>
+                    </motion.div>
+                  </div>
+
+                  {/* Gradient heading */}
+                  <motion.h3
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5, duration: 0.4 }}
+                    className="text-3xl font-extrabold mb-3 tracking-tight"
+                    style={{
+                      background: 'linear-gradient(135deg, #059669 0%, #6366f1 50%, #818cf8 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >
+                    Welcome back!
+                  </motion.h3>
+
+                  <motion.p
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.65, duration: 0.4 }}
+                    className="text-sm text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed mb-8"
+                  >
+                    Successfully authenticated. Redirecting you to your dashboard...
+                  </motion.p>
+
+                  {/* Progress bar */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.8 }}
+                    className="w-48 h-1.5 bg-slate-200/60 dark:bg-slate-700/60 rounded-full overflow-hidden"
+                  >
+                    <motion.div
+                      initial={{ width: '0%' }}
+                      animate={{ width: '100%' }}
+                      transition={{ delay: 0.8, duration: 1.2, ease: "easeInOut" }}
+                      className="h-full rounded-full"
+                      style={{
+                        background: 'linear-gradient(90deg, #059669, #6366f1, #818cf8)',
+                      }}
+                    />
+                  </motion.div>
                 </motion.div>
               )}
             </AnimatePresence>

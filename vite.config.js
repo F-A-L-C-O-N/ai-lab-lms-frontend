@@ -14,4 +14,11 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rolldownOptions: {
+      checks: {
+        eval: false,
+      },
+    },
+  },
 })

@@ -133,10 +133,12 @@ function App() {
     }
   };
 
+  const showRobot = view.page !== 'landing' && view.page !== 'login' && view.page !== 'signup';
+
   return (
     <>
       {renderPage()}
-      <AnimatedRobot />
+      {showRobot && <AnimatedRobot />}
     </>
   );
 }

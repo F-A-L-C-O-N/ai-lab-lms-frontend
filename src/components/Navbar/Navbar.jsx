@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Menu, X, Moon, Sun } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Menu, X, Moon, Sun, User, ChevronDown, KeyRound, Eye, EyeOff, Lock, Check } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
 const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
@@ -9,6 +9,69 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
     return localStorage.getItem('theme') === 'dark' ||
       (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
+
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  
+  // Change password form states
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // Password visibility states
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Feedback states
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+
+  const dropdownRef = useRef(null);
+
+  // Click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleChangePasswordSubmit = (e) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setErrorMessage('All fields are required.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      setErrorMessage('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMessage('New passwords do not match.');
+      return;
+    }
+
+    // Success (Mock update on frontend)
+    setSuccessMessage('Password updated successfully!');
+    
+    // Clear form after a short delay and close modal
+    setTimeout(() => {
+      setIsChangePasswordOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setSuccessMessage('');
+    }, 1800);
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -97,12 +160,44 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
             </button>
 
             {isAuthenticated ? (
-              <button
-                onClick={onLogout}
-                className="border-2 border-red-200 hover:border-red-300 dark:border-red-900/50 dark:hover:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
-              >
-                LOG OUT
-              </button>
+              <div className="flex items-center space-x-3 relative" ref={dropdownRef}>
+                {/* Profile Button */}
+                <button
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex items-center gap-2 border-2 border-border dark:border-slate-800 hover:border-primary dark:hover:border-indigo-500 text-text-primary dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/50 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+                >
+                  <User size={18} className="text-primary dark:text-indigo-400" />
+                  <span>Profile</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Profile Dropdown */}
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-slate-900 border border-border dark:border-slate-800 rounded-2xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-3 py-2 border-b border-border dark:border-slate-800 mb-1">
+                      <p className="text-xs font-semibold text-text-secondary dark:text-slate-400">Signed in as</p>
+                      <p className="text-sm font-bold text-text-primary dark:text-slate-150 truncate">{localStorage.getItem('userName') || 'Learner'}</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        setIsChangePasswordOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-text-primary dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left cursor-pointer"
+                    >
+                      <KeyRound size={16} className="text-primary dark:text-indigo-400" />
+                      Change Password
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={onLogout}
+                  className="border-2 border-red-200 hover:border-red-300 dark:border-red-900/50 dark:hover:border-red-900 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
+                >
+                  LOG OUT
+                </button>
+              </div>
             ) : (
               <>
                 <button
@@ -181,7 +276,21 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
       {isMobileMenuOpen && (
         <div className="md:hidden bg-white dark:bg-slate-900 border border-border dark:border-slate-800 shadow-xl rounded-2xl absolute right-4 top-[68px] w-52 p-3 z-50">
             {isAuthenticated ? (
-              <div className="w-full">
+              <div className="flex flex-col gap-2 w-full">
+                <div className="px-3 py-1.5 border-b border-border dark:border-slate-800 mb-1">
+                  <p className="text-[10px] font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wider">Account</p>
+                  <p className="text-xs font-bold text-text-primary dark:text-slate-150 truncate">{localStorage.getItem('userName') || 'Learner'}</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsChangePasswordOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm font-bold text-text-primary dark:text-slate-100 bg-slate-50 dark:bg-slate-800/40 border-2 border-border dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-sm active:scale-98"
+                >
+                  <KeyRound size={16} className="text-primary dark:text-indigo-400" />
+                  Change Password
+                </button>
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
@@ -216,6 +325,134 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
               </div>
             )}
           </div>
+      )}
+
+      {/* Change Password Modal */}
+      {isChangePasswordOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative transition-all duration-300 animate-in zoom-in-95 duration-200">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setIsChangePasswordOpen(false);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setErrorMessage('');
+                setSuccessMessage('');
+              }}
+              className="absolute top-4 right-4 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 transition-colors p-1 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Header */}
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="h-12 w-12 rounded-full bg-indigo-50 dark:bg-indigo-950/40 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30 mb-3">
+                <Lock size={22} className="text-primary dark:text-indigo-400" />
+              </div>
+              <h3 className="text-xl font-black text-text-primary dark:text-slate-100 tracking-tight">Change Password</h3>
+              <p className="text-xs font-medium text-text-secondary dark:text-slate-400 mt-1">
+                Security update for your account
+              </p>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleChangePasswordSubmit} className="space-y-4">
+              {errorMessage && (
+                <div className="p-3 text-xs font-semibold bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 rounded-xl border border-red-100 dark:border-red-900/30 flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-600 dark:bg-red-400 shrink-0" />
+                  {errorMessage}
+                </div>
+              )}
+
+              {successMessage && (
+                <div className="p-3 text-xs font-semibold bg-green-50 dark:bg-green-950/20 text-green-600 dark:text-green-400 rounded-xl border border-green-100 dark:border-green-900/30 flex items-center gap-2">
+                  <Check size={16} className="text-green-600 dark:text-green-400 shrink-0" />
+                  {successMessage}
+                </div>
+              )}
+
+              {/* Current Password */}
+              <div>
+                <label className="block text-xs font-bold text-text-primary dark:text-slate-350 mb-1.5 uppercase tracking-wider">
+                  Current Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary dark:focus:border-indigo-500 transition-colors pr-10 text-text-primary dark:text-slate-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 cursor-pointer"
+                  >
+                    {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-xs font-bold text-text-primary dark:text-slate-350 mb-1.5 uppercase tracking-wider">
+                  New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary dark:focus:border-indigo-500 transition-colors pr-10 text-text-primary dark:text-slate-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 cursor-pointer"
+                  >
+                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="block text-xs font-bold text-text-primary dark:text-slate-350 mb-1.5 uppercase tracking-wider">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat new password"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary dark:focus:border-indigo-500 transition-colors pr-10 text-text-primary dark:text-slate-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={successMessage !== ''}
+                className="w-full bg-primary hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer text-center text-sm"
+              >
+                UPDATE PASSWORD
+              </button>
+            </form>
+          </div>
+        </div>
       )}
     </header>
   );
