@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Lock, Eye, EyeOff, ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
-import { auth, googleProvider, githubProvider } from '../../firebase/clients';
+import { auth, googleProvider, githubProvider } from '../firebase/clients';
 import { signInWithPopup } from 'firebase/auth';
 import NeuralNetworkBackground from '../components/NeuralNetworkBackground';
 
