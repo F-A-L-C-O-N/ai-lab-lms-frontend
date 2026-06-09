@@ -245,7 +245,6 @@ export default function AnimatedRobot() {
                     AI Lab Assistant
                     <Zap size={10} className="text-amber-500 fill-current" />
                   </h3>
-                  <span className="text-slate-400 dark:text-slate-500 text-[9px] sm:text-[10px] font-semibold tracking-wide uppercase">Powered by Gemini</span>
                 </div>
               </div>
               

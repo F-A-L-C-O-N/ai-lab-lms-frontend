@@ -11,7 +11,7 @@ const transpilePythonToJS = (pyCode) => {
   let lines = code.split('\n');
   let indentStack = [0];
   let resultLines = [];
-  
+
   const polyfills = `
     const len = (x) => x && typeof x.length !== 'undefined' ? x.length : (x.size || 0);
     const sum = (x) => Array.isArray(x) ? x.reduce((a, b) => a + b, 0) : 0;
@@ -185,6 +185,15 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     const saved = localStorage.getItem('AI Lab Learning Portal_completed_steps');
     return saved ? JSON.parse(saved) : {};
   });
+
+  // Window width state for responsive roadmap layout
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Page view mode: 'roadmap' or 'lesson'
   const [viewMode, setViewMode] = useState('roadmap');
@@ -387,7 +396,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
         if (!streakInfo.history.includes(today)) {
           streakInfo.history.push(today);
-          
+
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
           const yesterdayStr = yesterday.toISOString().split('T')[0];
@@ -400,7 +409,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
             // broken streak or first activity
             streakInfo.count = 1;
           }
-          
+
           streakInfo.lastActivityDate = today;
           if (streakInfo.count > streakInfo.bestStreak) {
             streakInfo.bestStreak = streakInfo.count;
@@ -484,12 +493,17 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     return 'locked';
   };
 
+  const isSmallScreen = windowWidth <= 750;
+  const isTinyScreen = windowWidth < 480;
+
   const getMilestoneCoords = (index, total) => {
     const Y = 100 + index * 180;
     if (index === 0) {
       return { X: 300, Y };
     }
-    const X = index % 2 === 1 ? 150 : 450;
+    // Reduce amplitude on small screens so cards fit on the sides
+    const amplitude = isTinyScreen ? 60 : (isSmallScreen ? 80 : 150);
+    const X = index % 2 === 1 ? (300 - amplitude) : (300 + amplitude);
     return { X, Y };
   };
 
@@ -542,12 +556,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
     const start = getMilestoneCoords(0, milestones.length);
     let d = `M ${start.X} ${start.Y}`;
-    
+
     for (let i = 0; i < milestones.length - 1; i++) {
       const s = getMilestoneCoords(i, milestones.length);
       const e = getMilestoneCoords(i + 1, milestones.length);
       d += ` C ${s.X} ${s.Y + 90}, ${e.X} ${e.Y - 90}, ${e.X} ${e.Y}`;
-      
+
       const tempPath = document.createElementNS(svgNS, "path");
       tempPath.setAttribute("d", d);
       tempSvg.appendChild(tempPath);
@@ -556,7 +570,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
     document.body.removeChild(tempSvg);
     setMilestoneDistances(distances);
-  }, [pathElement, milestones.length]);
+  }, [pathElement, milestones.length, windowWidth]);
 
   // Handle vehicle movement animation when completed steps update
   useEffect(() => {
@@ -567,10 +581,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     const updateCoords = (val) => {
       if (!pathElement || milestoneDistances.length === 0) return;
       const pathLength = pathElement.getTotalLength();
-      
+
       const segmentIdx = Math.floor(val);
       const t = val - segmentIdx;
-      
+
       let distance = 0;
       if (segmentIdx >= milestoneDistances.length - 1) {
         distance = milestoneDistances[milestoneDistances.length - 1];
@@ -624,11 +638,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const getTrailParticles = () => {
     if (!pathElement || milestoneDistances.length === 0) return [];
     const pathLength = pathElement.getTotalLength();
-    
+
     const val = currentAnimatedIndex;
     const segmentIdx = Math.floor(val);
     const t = val - segmentIdx;
-    
+
     let distance = 0;
     if (segmentIdx >= milestoneDistances.length - 1) {
       distance = milestoneDistances[milestoneDistances.length - 1];
@@ -668,384 +682,405 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
         <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
 
-            {/* Back Navigation Bar */}
-            <div className="mb-8 flex items-center justify-between">
-              <button
-                onClick={onBack}
-                className="flex items-center text-text-secondary dark:text-slate-400 hover:text-primary dark:hover:text-indigo-400 font-bold transition-colors group"
-              >
-                <ArrowLeft size={20} className="mr-2 transform group-hover:-translate-x-1 transition-transform" />
-                Back to Dashboard
-              </button>
+          {/* Back Navigation Bar */}
+          <div className="mb-8 flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="flex items-center text-text-secondary dark:text-slate-400 hover:text-primary dark:hover:text-indigo-400 font-bold transition-colors group"
+            >
+              <ArrowLeft size={20} className="mr-2 transform group-hover:-translate-x-1 transition-transform" />
+              Back to Dashboard
+            </button>
 
-              <span className="text-xs font-black uppercase tracking-wider bg-primary/10 dark:bg-indigo-950/40 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-lg border border-primary/20 dark:border-indigo-900/30">
-                AI/ML Learning Path
-              </span>
-            </div>
-
-            {/* Course Progress Section at Top */}
-            <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 mb-12 shadow-[0_4px_0_0_rgba(226,232,240,1)] dark:shadow-[0_4px_0_0_rgba(15,23,42,1)]">
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-
-                {/* Left: Progress Title & Bar */}
-                <div className="lg:col-span-5 space-y-4">
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF] bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md border border-indigo-100 dark:border-indigo-900/30">
-                      Course Progress
-                    </span>
-                    <h1 className="text-2xl md:text-3xl font-black text-text-primary dark:text-slate-100 tracking-tight mt-3">{courseName}</h1>
-                    <p className="text-xs font-semibold text-text-secondary dark:text-slate-400 mt-1">
-                      Climb the winding road to master advanced concepts.
-                    </p>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-center text-xs font-black text-text-primary dark:text-slate-200 mb-2">
-                      <span>Overall Completion</span>
-                      <span className="text-green-600 dark:text-green-400">{progressPercent}%</span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden p-[2px] border border-border dark:border-slate-750">
-                      <div
-                        className="bg-gradient-to-r from-[#3B3B98] to-[#6C63FF] h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(108,99,255,0.4)]"
-                        style={{ width: `${progressPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: 4 Stats Cards */}
-                <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-4">
-
-                  {/* Topics Card */}
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
-                    <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
-                      <BookOpen size={14} className="text-[#3B3B98] mr-1.5" /> Topics
-                    </span>
-                    <div>
-                      <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedTopics}</span>
-                      <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.length}</span>
-                    </div>
-                  </div>
-
-                  {/* Quizzes Card */}
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
-                    <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
-                      <Target size={14} className="text-[#FF6B6B] mr-1.5" /> Quizzes
-                    </span>
-                    <div>
-                      <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedQuizzes}</span>
-                      <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => !s.study.code).length}</span>
-                    </div>
-                  </div>
-
-                  {/* Challenges Card */}
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
-                    <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
-                      <Code size={14} className="text-[#6C63FF] mr-1.5" /> Challenges
-                    </span>
-                    <div>
-                      <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedChallenges}</span>
-                      <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => s.study.code).length}</span>
-                    </div>
-                  </div>
-
-                  {/* Streak Card */}
-                  <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
-                    <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
-                      <Flame size={14} className="text-[#FF6B6B] mr-1.5 fill-accent text-accent" /> Streak
-                    </span>
-                    <div>
-                      <span className="text-2xl font-black text-text-primary dark:text-slate-100">{getStreakCount()}</span>
-                      <span className="text-[10px] text-green-600 dark:text-green-400 font-black ml-1">DAYS</span>
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            </div>
-
-            {/* Winding Road Journey Section */}
-            <div className="flex justify-center items-center py-12 overflow-x-hidden md:overflow-x-visible">
-              <div
-                className="relative w-full max-w-[600px]"
-                style={{ height: `${H}px` }}
-              >
-
-                {/* Curved SVG Road */}
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none"
-                  viewBox={`0 0 600 ${H}`}
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  {/* Hidden continuous path for length & point measurements */}
-                  <path
-                    d={fullPathD}
-                    ref={setPathElement}
-                    fill="none"
-                    stroke="transparent"
-                    className="pointer-events-none"
-                  />
-
-                  {milestones.slice(0, -1).map((_, i) => {
-                    const start = getMilestoneCoords(i, milestones.length);
-                    const end = getMilestoneCoords(i + 1, milestones.length);
-                    const pathD = `M ${start.X} ${start.Y} C ${start.X} ${start.Y + 90}, ${end.X} ${end.Y - 90}, ${end.X} ${end.Y}`;
-
-                    const targetMilestone = milestones[i + 1];
-                    const targetStatus = getMilestoneStatus(targetMilestone, i + 1);
-                    const isUnlocked = targetStatus !== 'locked';
-                    const isCurrentlyTraveled = isMoving && i === currentSegmentIdx;
-
-                    return (
-                      <g key={i}>
-                        {/* Thick Road Track */}
-                        <path
-                          d={pathD}
-                          stroke={isUnlocked ? '#6C63FF' : '#E2E8F0'}
-                          strokeWidth={28}
-                          strokeLinecap="round"
-                          fill="none"
-                          className="transition-colors duration-500 dark:stroke-slate-800"
-                        />
-                        {/* Road Glow layer when unlocked or active */}
-                        {(isCurrentlyTraveled || (isUnlocked && !isMoving)) && (
-                          <path
-                            d={pathD}
-                            stroke="#6C63FF"
-                            strokeWidth={36}
-                            strokeLinecap="round"
-                            fill="none"
-                            className="opacity-20 blur-sm transition-opacity duration-300"
-                          />
-                        )}
-                        {/* Lane Dash Divider */}
-                        <path
-                          d={pathD}
-                          stroke={isUnlocked ? '#FFFFFF' : '#94A3B8'}
-                          strokeWidth={2}
-                          strokeDasharray="6,6"
-                          strokeLinecap="round"
-                          fill="none"
-                          className="transition-colors duration-500 opacity-70 dark:stroke-slate-650"
-                        />
-                      </g>
-                    );
-                  })}
-                </svg>
-
-                {/* Motion Trail Particles */}
-                {trailParticles.map(p => (
-                  <div
-                    key={p.id}
-                    className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-[#FF6B6B] to-[#6C63FF] pointer-events-none transition-opacity duration-300 shadow-[0_0_8px_#FF6B6B] z-20"
-                    style={{
-                      left: `${(p.x / 600) * 100}%`,
-                      top: `${(p.y / H) * 100}%`,
-                      transform: 'translate(-50%, -50%) scale(0.8)',
-                      opacity: p.opacity
-                    }}
-                  />
-                ))}
-
-                {/* Animated Progress Vehicle (Sports Car) */}
-                <div
-                  className="absolute z-40 pointer-events-none transition-transform duration-75"
-                  style={{
-                    left: `${(carCoords.x / 600) * 100}%`,
-                    top: `${(carCoords.y / H) * 100}%`,
-                    transform: `translate(-50%, -50%) rotate(${carCoords.angle}deg)`
-                  }}
-                >
-                  <svg width="40" height="24" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Shadow */}
-                    <rect x="2" y="5" width="36" height="15" rx="4" fill="black" opacity="0.25" />
-                    {/* Body */}
-                    <rect x="4" y="3" width="32" height="18" rx="5" fill="#FF6B6B" />
-                    {/* Windshield / Cab */}
-                    <rect x="12" y="6" width="14" height="12" rx="2.5" fill="#1E293B" />
-                    <rect x="15" y="7.5" width="8" height="9" rx="1" fill="#475569" />
-                    {/* Spoiler */}
-                    <rect x="4" y="5" width="2" height="14" rx="0.5" fill="#EF4444" />
-                    {/* Headlights */}
-                    <circle cx="34" cy="7.5" r="1.5" fill="#FDE047" />
-                    <circle cx="34" cy="16.5" r="1.5" fill="#FDE047" />
-                    {/* Tail Lights */}
-                    <rect x="5" y="6" width="1" height="2.5" fill="#EF4444" />
-                    <rect x="5" y="15.5" width="1" height="2.5" fill="#EF4444" />
-                    {/* Wheels */}
-                    <rect x="9" y="1" width="7" height="2" rx="0.5" fill="#0F172A" />
-                    <rect x="24" y="1" width="7" height="2" rx="0.5" fill="#0F172A" />
-                    <rect x="9" y="21" width="7" height="2" rx="0.5" fill="#0F172A" />
-                    <rect x="24" y="21" width="7" height="2" rx="0.5" fill="#0F172A" />
-                  </svg>
-                </div>
-
-                {/* Milestone Node Buttons & Info Cards */}
-                {milestones.map((milestone, index) => {
-                  const coords = getMilestoneCoords(index, milestones.length);
-                  const status = getMilestoneStatus(milestone, index);
-                  const isUnlocked = status !== 'locked';
-
-                  // Setup type-specific visual properties
-                  let Icon = BookOpen;
-                  let colorClass = 'bg-[#3B3B98] text-white';
-                  let emoji = '📚';
-                  let typeLabel = 'Topic';
-
-                  if (milestone.type === 'quiz') {
-                    Icon = HelpCircle;
-                    colorClass = 'bg-[#FF6B6B] text-white';
-                    emoji = '❓';
-                    typeLabel = 'Practice Quiz';
-                  } else if (milestone.type === 'challenge') {
-                    Icon = Code;
-                    colorClass = 'bg-[#6C63FF] text-white';
-                    emoji = '💻';
-                    typeLabel = 'Coding Challenge';
-                  } else if (milestone.type === 'assessment') {
-                    Icon = Trophy;
-                    colorClass = 'bg-amber-500 text-white';
-                    emoji = '🏆';
-                    typeLabel = 'Final Assessment';
-                  }
-
-                  const handleClick = () => {
-                    if (status === 'locked') return;
-
-                    if (milestone.type === 'topic') {
-                      handleStartLesson(milestone);
-                    } else if (milestone.type === 'quiz' || milestone.type === 'challenge') {
-                      setActiveStep(milestone);
-                      setLessonPhase('quiz');
-                      setViewMode('lesson');
-                      setCurrentQuestionIdx(0);
-                      setSelectedOption(null);
-                      setIsAnswerChecked(false);
-                      setScore(0);
-                    } else if (milestone.type === 'assessment') {
-                      const allQuestions = [];
-                      steps.forEach(s => {
-                        if (s.quiz) allQuestions.push(...s.quiz);
-                      });
-
-                      const assessmentStepData = {
-                        id: 'final',
-                        title: 'Final Course Assessment',
-                        study: {
-                          heading: 'Final Course Assessment',
-                          content: 'Complete the comprehensive test covering all lessons in this course.'
-                        },
-                        quiz: allQuestions
-                      };
-
-                      setActiveStep({
-                        ...milestone,
-                        stepData: assessmentStepData
-                      });
-                      setLessonPhase('study');
-                      setViewMode('lesson');
-                      setCurrentQuestionIdx(0);
-                      setSelectedOption(null);
-                      setIsAnswerChecked(false);
-                      setScore(0);
-                    }
-                  };
-
-                  return (
-                    <div
-                      key={milestone.id}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 z-30"
-                      style={{
-                        left: `${(coords.X / 600) * 100}%`,
-                        top: `${(coords.Y / H) * 100}%`
-                      }}
-                    >
-                      {/* Glow Ring for Current Step */}
-                      {status === 'current' && (
-                        <div className="absolute -inset-3 rounded-full bg-[#6C63FF]/30 dark:bg-indigo-500/30 animate-pulse z-0" />
-                      )}
-
-                      {/* Interactive Circle Node */}
-                      <motion.button
-                        whileHover={isUnlocked ? { scale: 1.15 } : {}}
-                        whileTap={isUnlocked ? { scale: 0.95 } : {}}
-                        onClick={handleClick}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center border-4 shadow-lg transition-all duration-300 z-10 relative ${status === 'completed'
-                            ? 'bg-[#4CAF50] border-white dark:border-slate-900 text-white shadow-[#4CAF50]/20'
-                            : status === 'current'
-                              ? 'bg-[#3B3B98] border-white dark:border-slate-900 text-white shadow-[#3B3B98]/30 ring-4 ring-[#6C63FF]/20'
-                              : 'bg-slate-200 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400 dark:text-slate-650 shadow-none cursor-not-allowed'
-                          }`}
-                      >
-                        {status === 'completed' ? (
-                          <Check size={24} className="stroke-[3.5]" />
-                        ) : status === 'locked' ? (
-                          <Lock size={18} />
-                        ) : (
-                          <Icon size={20} className="stroke-[2.5]" />
-                        )}
-                      </motion.button>
-
-                      {/* Info Card Next to Circle */}
-                      <div
-                        className={`absolute w-[180px] md:w-[220px] transition-all duration-300 pointer-events-auto ${coords.X === 150
-                            ? 'left-1/2 -translate-x-1/2 top-[65px] md:right-[75px] md:left-auto md:translate-x-0 md:top-1/2 md:-translate-y-1/2'
-                            : coords.X === 450
-                              ? 'left-1/2 -translate-x-1/2 top-[65px] md:left-[75px] md:right-auto md:translate-x-0 md:top-1/2 md:-translate-y-1/2'
-                              : 'left-1/2 -translate-x-1/2 top-[65px] md:left-[75px] md:translate-x-0 md:top-1/2 md:-translate-y-1/2'
-                          }`}
-                      >
-                        <div
-                          className={`p-4 rounded-3xl border-2 transition-all duration-300 ${status === 'current'
-                              ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)] md:scale-105'
-                              : status === 'completed'
-                                ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm'
-                                : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60'
-                            }`}
-                        >
-                          <div className="flex items-center space-x-1.5 mb-1.5 justify-center md:justify-start">
-                            <span className="text-sm">{emoji}</span>
-                            <span className="text-[9px] font-black uppercase tracking-wider text-text-secondary dark:text-slate-400">
-                              {typeLabel}
-                            </span>
-                          </div>
-
-                          <h4 className="text-xs md:text-sm font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-center md:text-left flex items-center justify-center md:justify-start">
-                            {milestone.title}
-                          </h4>
-
-                          <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 text-[9px] font-bold text-text-secondary dark:text-slate-450">
-                            <span className="flex items-center">
-                              {milestone.type === 'challenge' && (
-                                <Code size={10} className="mr-1 text-[#6C63FF]" />
-                              )}
-                              {milestone.duration}
-                            </span>
-                            <span className={
-                              status === 'completed'
-                                ? 'text-green-600 dark:text-green-400 font-bold'
-                                : status === 'current'
-                                  ? 'text-[#6C63FF] dark:text-indigo-400 font-bold'
-                                  : 'text-slate-400 dark:text-slate-650'
-                            }>
-                              {status === 'completed' ? 'Completed' : status === 'current' ? 'Current' : 'Locked'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })}
-
-              </div>
+            <span className="text-xs font-black uppercase tracking-wider bg-primary/10 dark:bg-indigo-950/40 text-primary dark:text-indigo-400 px-3 py-1.5 rounded-lg border border-primary/20 dark:border-indigo-900/30">
+              AI/ML Learning Path
+            </span>
           </div>
 
-          </main>
+          {/* Course Progress Section at Top */}
+          <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 mb-12 shadow-[0_4px_0_0_rgba(226,232,240,1)] dark:shadow-[0_4px_0_0_rgba(15,23,42,1)]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
-          <Footer />
-        </div>
+              {/* Left: Progress Title & Bar */}
+              <div className="lg:col-span-5 space-y-4">
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#6C63FF] bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md border border-indigo-100 dark:border-indigo-900/30">
+                    Course Progress
+                  </span>
+                  <h1 className="text-2xl md:text-3xl font-black text-text-primary dark:text-slate-100 tracking-tight mt-3">{courseName}</h1>
+                  <p className="text-xs font-semibold text-text-secondary dark:text-slate-400 mt-1">
+                    Climb the winding road to master advanced concepts.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center text-xs font-black text-text-primary dark:text-slate-200 mb-2">
+                    <span>Overall Completion</span>
+                    <span className="text-green-600 dark:text-green-400">{progressPercent}%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden p-[2px] border border-border dark:border-slate-750">
+                    <div
+                      className="bg-gradient-to-r from-[#3B3B98] to-[#6C63FF] h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(108,99,255,0.4)]"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: 4 Stats Cards */}
+              <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-4">
+
+                {/* Topics Card */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
+                  <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
+                    <BookOpen size={14} className="text-[#3B3B98] mr-1.5" /> Topics
+                  </span>
+                  <div>
+                    <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedTopics}</span>
+                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.length}</span>
+                  </div>
+                </div>
+
+                {/* Quizzes Card */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
+                  <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
+                    <Target size={14} className="text-[#FF6B6B] mr-1.5" /> Quizzes
+                  </span>
+                  <div>
+                    <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedQuizzes}</span>
+                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => !s.study.code).length}</span>
+                  </div>
+                </div>
+
+                {/* Challenges Card */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
+                  <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
+                    <Code size={14} className="text-[#6C63FF] mr-1.5" /> Challenges
+                  </span>
+                  <div>
+                    <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedChallenges}</span>
+                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => s.study.code).length}</span>
+                  </div>
+                </div>
+
+                {/* Streak Card */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
+                  <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
+                    <Flame size={14} className="text-[#FF6B6B] mr-1.5 fill-accent text-accent" /> Streak
+                  </span>
+                  <div>
+                    <span className="text-2xl font-black text-text-primary dark:text-slate-100">{getStreakCount()}</span>
+                    <span className="text-[10px] text-green-600 dark:text-green-400 font-black ml-1">DAYS</span>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* Winding Road Journey Section */}
+          <div className="flex justify-center items-center py-12 overflow-x-hidden md:overflow-x-visible">
+            <div
+              className="relative w-full max-w-[600px]"
+              style={{ height: `${H}px` }}
+            >
+
+              {/* Curved SVG Road */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none"
+                viewBox={`0 0 600 ${H}`}
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                {/* Hidden continuous path for length & point measurements */}
+                <path
+                  d={fullPathD}
+                  ref={setPathElement}
+                  fill="none"
+                  stroke="transparent"
+                  className="pointer-events-none"
+                />
+
+                {milestones.slice(0, -1).map((_, i) => {
+                  const start = getMilestoneCoords(i, milestones.length);
+                  const end = getMilestoneCoords(i + 1, milestones.length);
+                  const pathD = `M ${start.X} ${start.Y} C ${start.X} ${start.Y + 90}, ${end.X} ${end.Y - 90}, ${end.X} ${end.Y}`;
+
+                  const targetMilestone = milestones[i + 1];
+                  const targetStatus = getMilestoneStatus(targetMilestone, i + 1);
+                  const isUnlocked = targetStatus !== 'locked';
+                  const isCurrentlyTraveled = isMoving && i === currentSegmentIdx;
+
+                  return (
+                    <g key={i}>
+                      {/* Thick Road Track */}
+                      <path
+                        d={pathD}
+                        stroke={isUnlocked ? '#6C63FF' : '#E2E8F0'}
+                        strokeWidth={28}
+                        strokeLinecap="round"
+                        fill="none"
+                        className="transition-colors duration-500 dark:stroke-slate-800"
+                      />
+                      {/* Road Glow layer when unlocked or active */}
+                      {(isCurrentlyTraveled || (isUnlocked && !isMoving)) && (
+                        <path
+                          d={pathD}
+                          stroke="#6C63FF"
+                          strokeWidth={36}
+                          strokeLinecap="round"
+                          fill="none"
+                          className="opacity-20 blur-sm transition-opacity duration-300"
+                        />
+                      )}
+                      {/* Lane Dash Divider */}
+                      <path
+                        d={pathD}
+                        stroke={isUnlocked ? '#FFFFFF' : '#94A3B8'}
+                        strokeWidth={2}
+                        strokeDasharray="6,6"
+                        strokeLinecap="round"
+                        fill="none"
+                        className="transition-colors duration-500 opacity-70 dark:stroke-slate-650"
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Motion Trail Particles */}
+              {trailParticles.map(p => (
+                <div
+                  key={p.id}
+                  className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-[#FF6B6B] to-[#6C63FF] pointer-events-none transition-opacity duration-300 shadow-[0_0_8px_#FF6B6B] z-20"
+                  style={{
+                    left: `${(p.x / 600) * 100}%`,
+                    top: `${(p.y / H) * 100}%`,
+                    transform: 'translate(-50%, -50%) scale(0.8)',
+                    opacity: p.opacity
+                  }}
+                />
+              ))}
+
+              {/* Animated Progress Vehicle (Sports Car) */}
+              <div
+                className="absolute z-40 pointer-events-none transition-transform duration-75"
+                style={{
+                  left: `${(carCoords.x / 600) * 100}%`,
+                  top: `${(carCoords.y / H) * 100}%`,
+                  transform: `translate(-50%, -50%) rotate(${carCoords.angle}deg)`
+                }}
+              >
+                <svg width="40" height="24" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Shadow */}
+                  <rect x="2" y="5" width="36" height="15" rx="4" fill="black" opacity="0.25" />
+                  {/* Body */}
+                  <rect x="4" y="3" width="32" height="18" rx="5" fill="#FF6B6B" />
+                  {/* Windshield / Cab */}
+                  <rect x="12" y="6" width="14" height="12" rx="2.5" fill="#1E293B" />
+                  <rect x="15" y="7.5" width="8" height="9" rx="1" fill="#475569" />
+                  {/* Spoiler */}
+                  <rect x="4" y="5" width="2" height="14" rx="0.5" fill="#EF4444" />
+                  {/* Headlights */}
+                  <circle cx="34" cy="7.5" r="1.5" fill="#FDE047" />
+                  <circle cx="34" cy="16.5" r="1.5" fill="#FDE047" />
+                  {/* Tail Lights */}
+                  <rect x="5" y="6" width="1" height="2.5" fill="#EF4444" />
+                  <rect x="5" y="15.5" width="1" height="2.5" fill="#EF4444" />
+                  {/* Wheels */}
+                  <rect x="9" y="1" width="7" height="2" rx="0.5" fill="#0F172A" />
+                  <rect x="24" y="1" width="7" height="2" rx="0.5" fill="#0F172A" />
+                  <rect x="9" y="21" width="7" height="2" rx="0.5" fill="#0F172A" />
+                  <rect x="24" y="21" width="7" height="2" rx="0.5" fill="#0F172A" />
+                </svg>
+              </div>
+
+              {/* Milestone Node Buttons & Info Cards */}
+              {milestones.map((milestone, index) => {
+                const coords = getMilestoneCoords(index, milestones.length);
+                const status = getMilestoneStatus(milestone, index);
+                const isUnlocked = status !== 'locked';
+
+                // Setup type-specific visual properties
+                let Icon = BookOpen;
+                let colorClass = 'bg-[#3B3B98] text-white';
+                let emoji = '📚';
+                let typeLabel = 'Topic';
+
+                if (milestone.type === 'quiz') {
+                  Icon = HelpCircle;
+                  colorClass = 'bg-[#FF6B6B] text-white';
+                  emoji = '❓';
+                  typeLabel = 'Practice Quiz';
+                } else if (milestone.type === 'challenge') {
+                  Icon = Code;
+                  colorClass = 'bg-[#6C63FF] text-white';
+                  emoji = '💻';
+                  typeLabel = 'Coding Challenge';
+                } else if (milestone.type === 'assessment') {
+                  Icon = Trophy;
+                  colorClass = 'bg-amber-500 text-white';
+                  emoji = '🏆';
+                  typeLabel = 'Final Assessment';
+                }
+
+                const handleClick = () => {
+                  if (status === 'locked') return;
+
+                  if (milestone.type === 'topic') {
+                    handleStartLesson(milestone);
+                  } else if (milestone.type === 'quiz' || milestone.type === 'challenge') {
+                    setActiveStep(milestone);
+                    setLessonPhase('quiz');
+                    setViewMode('lesson');
+                    setCurrentQuestionIdx(0);
+                    setSelectedOption(null);
+                    setIsAnswerChecked(false);
+                    setScore(0);
+                  } else if (milestone.type === 'assessment') {
+                    const allQuestions = [];
+                    steps.forEach(s => {
+                      if (s.quiz) allQuestions.push(...s.quiz);
+                    });
+
+                    const assessmentStepData = {
+                      id: 'final',
+                      title: 'Final Course Assessment',
+                      study: {
+                        heading: 'Final Course Assessment',
+                        content: 'Complete the comprehensive test covering all lessons in this course.'
+                      },
+                      quiz: allQuestions
+                    };
+
+                    setActiveStep({
+                      ...milestone,
+                      stepData: assessmentStepData
+                    });
+                    setLessonPhase('study');
+                    setViewMode('lesson');
+                    setCurrentQuestionIdx(0);
+                    setSelectedOption(null);
+                    setIsAnswerChecked(false);
+                    setScore(0);
+                  }
+                };
+
+                return (
+                  <div
+                    key={milestone.id}
+                    className="absolute -translate-x-1/2 -translate-y-1/2 z-30"
+                    style={{
+                      left: `${(coords.X / 600) * 100}%`,
+                      top: `${(coords.Y / H) * 100}%`
+                    }}
+                  >
+                    {/* Glow Ring for Current Step */}
+                    {status === 'current' && (
+                      <div className="absolute -inset-3 rounded-full bg-[#6C63FF]/30 dark:bg-indigo-500/30 animate-pulse z-0" />
+                    )}
+
+                    {/* Interactive Circle Node */}
+                    <motion.button
+                      whileHover={isUnlocked ? { scale: 1.15 } : {}}
+                      whileTap={isUnlocked ? { scale: 0.95 } : {}}
+                      onClick={handleClick}
+                      className={`w-14 h-14 rounded-full flex items-center justify-center border-4 shadow-lg transition-all duration-300 z-10 relative ${status === 'completed'
+                        ? 'bg-[#4CAF50] border-white dark:border-slate-900 text-white shadow-[#4CAF50]/20'
+                        : status === 'current'
+                          ? 'bg-[#3B3B98] border-white dark:border-slate-900 text-white shadow-[#3B3B98]/30 ring-4 ring-[#6C63FF]/20'
+                          : 'bg-slate-200 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400 dark:text-slate-650 shadow-none cursor-not-allowed'
+                        }`}
+                    >
+                      {status === 'completed' ? (
+                        <Check size={24} className="stroke-[3.5]" />
+                      ) : status === 'locked' ? (
+                        <Lock size={18} />
+                      ) : (
+                        <Icon size={20} className="stroke-[2.5]" />
+                      )}
+                    </motion.button>
+
+                    {/* Info Card Next to Circle */}
+                    <div
+                      className="absolute transition-all duration-300 pointer-events-auto"
+                      style={(() => {
+                        // Card width and offset based on screen size
+                        // The node circle is w-14 (56px). Parent is centered via -translate-x-1/2,
+                        // so the parent edge is ~28px from node center. Offset must be > 56px
+                        // to clear the full circle diameter + provide a visible gap.
+                        const cardWidth = isTinyScreen ? 105 : (isSmallScreen ? 125 : 220);
+                        const offset = isTinyScreen ? 58 : (isSmallScreen ? 62 : 75);
+
+                        const style = {
+                          width: `${cardWidth}px`,
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                        };
+
+                        if (coords.X < 300) {
+                          // Node on left side → card goes further left (away from road)
+                          style.right = `${offset}px`;
+                          style.left = 'auto';
+                        } else {
+                          // Node on right side or center → card goes further right
+                          style.left = `${offset}px`;
+                          style.right = 'auto';
+                        }
+
+                        return style;
+                      })()}
+                    >
+                      <div
+                        className={`${isSmallScreen ? 'p-2.5 rounded-2xl' : 'p-4 rounded-3xl'} border-2 transition-all duration-300 ${status === 'current'
+                          ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)]'
+                          : status === 'completed'
+                            ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm'
+                            : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-1 mb-1 justify-start">
+                          <span className={isSmallScreen ? 'text-xs' : 'text-sm'}>{emoji}</span>
+                          <span className={`${isSmallScreen ? 'text-[7px]' : 'text-[9px]'} font-black uppercase tracking-wider text-text-secondary dark:text-slate-400 truncate`}>
+                            {typeLabel}
+                          </span>
+                        </div>
+
+                        <h4 className={`${isTinyScreen ? 'text-[9px]' : (isSmallScreen ? 'text-[10px]' : 'text-sm')} font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-left`}>
+                          {milestone.title}
+                        </h4>
+
+                        <div className={`flex ${isSmallScreen ? 'flex-col gap-0.5' : 'items-center justify-between'} ${isSmallScreen ? 'mt-1.5 pt-1' : 'mt-3 pt-2'} border-t border-slate-100 dark:border-slate-800 ${isSmallScreen ? 'text-[7px]' : 'text-[9px]'} font-bold text-text-secondary dark:text-slate-450`}>
+                          <span className="flex items-center">
+                            {milestone.type === 'challenge' && (
+                              <Code size={isSmallScreen ? 8 : 10} className="mr-0.5 text-[#6C63FF]" />
+                            )}
+                            {milestone.duration}
+                          </span>
+                          <span className={
+                            status === 'completed'
+                              ? 'text-green-600 dark:text-green-400 font-bold'
+                              : status === 'current'
+                                ? 'text-[#6C63FF] dark:text-indigo-400 font-bold'
+                                : 'text-slate-400 dark:text-slate-650'
+                          }>
+                            {status === 'completed' ? 'Completed' : status === 'current' ? 'Current' : 'Locked'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
+
+            </div>
+          </div>
+
+        </main>
+
+        <Footer />
+      </div>
 
       {/* 2. IMMERSIVE LESSON VIEW (FULL SCREEN) */}
       {viewMode === 'lesson' && activeStep && (
@@ -1159,7 +1194,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                         <h2 className="text-2xl font-black text-text-primary dark:text-slate-100 leading-tight tracking-tight">
                           {activeStep.title}
                         </h2>
-                        
+
                         <div className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/10 dark:to-purple-500/10 border border-indigo-100/50 dark:border-indigo-900/35 rounded-2xl p-5 relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-full blur-xl pointer-events-none" />
                           <p className="text-sm font-semibold text-text-secondary dark:text-slate-350 leading-relaxed relative z-10">
@@ -1200,21 +1235,21 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           <div className="flex items-center">
                             {/* Window buttons */}
                             <div className="flex space-x-1.5 mr-6 items-center">
-                              <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] inline-block"/>
-                              <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] inline-block"/>
-                              <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F] inline-block"/>
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F56] inline-block" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#FFBD2E] inline-block" />
+                              <span className="w-2.5 h-2.5 rounded-full bg-[#27C93F] inline-block" />
                             </div>
                             {/* Tabs */}
                             <div className="flex pt-1.5">
                               <span className="bg-[#0B0F19] border-t-2 border-primary text-slate-100 px-4 py-2 font-mono flex items-center gap-1.5 rounded-t-lg text-[11px] border-x border-slate-850">
-                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500"/>
+                                <span className="w-1.5 h-1.5 rounded-full bg-yellow-500" />
                                 solution.py
                               </span>
                             </div>
                           </div>
                           <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono">Python</span>
                         </div>
-                        
+
                         {/* Code Editor Body - CodeMirror */}
                         <PythonEditor
                           value={userCode}
@@ -1227,19 +1262,16 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <div
                         onMouseDown={handleDragStart}
                         onTouchStart={handleDragStart}
-                        className={`group relative flex items-center justify-center cursor-row-resize select-none transition-colors duration-150 ${
-                          isDragging ? 'bg-primary/20' : 'hover:bg-slate-700/40'
-                        }`}
+                        className={`group relative flex items-center justify-center cursor-row-resize select-none transition-colors duration-150 ${isDragging ? 'bg-primary/20' : 'hover:bg-slate-700/40'
+                          }`}
                         style={{ height: '8px' }}
                       >
                         {/* Accent line */}
-                        <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] transition-colors duration-150 ${
-                          isDragging ? 'bg-primary' : 'bg-slate-700/80 group-hover:bg-slate-500'
-                        }`} />
+                        <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-[1px] transition-colors duration-150 ${isDragging ? 'bg-primary' : 'bg-slate-700/80 group-hover:bg-slate-500'
+                          }`} />
                         {/* Grab handle dots */}
-                        <div className={`relative flex items-center gap-0.5 px-2 py-0.5 rounded-full transition-colors duration-150 ${
-                          isDragging ? 'bg-primary/30' : 'bg-slate-800 group-hover:bg-slate-700'
-                        }`}>
+                        <div className={`relative flex items-center gap-0.5 px-2 py-0.5 rounded-full transition-colors duration-150 ${isDragging ? 'bg-primary/30' : 'bg-slate-800 group-hover:bg-slate-700'
+                          }`}>
                           <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
                           <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
                           <span className={`w-1 h-1 rounded-full transition-colors ${isDragging ? 'bg-primary' : 'bg-slate-600 group-hover:bg-slate-400'}`} />
@@ -1253,11 +1285,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                         <div className="bg-[#121824] border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-400 font-bold tracking-wider uppercase flex-shrink-0">
                           <div className="flex gap-4">
                             <span className={compileOutput ? "text-primary border-b-2 border-primary pb-0.5" : "text-slate-400"}>Console Output</span>
-    
+
                           </div>
                           <span className="text-slate-500">Bash</span>
                         </div>
-                        
+
                         <div className="p-4 space-y-2 overflow-y-auto flex-1 flex flex-col justify-center bg-[#080B11]">
                           {!compileOutput ? (
                             <div className="text-slate-500 text-center py-4 italic">
@@ -1265,13 +1297,13 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             </div>
                           ) : compileOutput.error ? (
                             <div className="text-red-400 space-y-1.5">
-                              <div className="font-bold flex items-center gap-1.5"><XCircle size={14}/> {compileOutput.error}</div>
+                              <div className="font-bold flex items-center gap-1.5"><XCircle size={14} /> {compileOutput.error}</div>
                               <div className="text-[10px] text-red-500/80">Check your syntax, missing brackets, or variables.</div>
                             </div>
                           ) : (
                             <div className="space-y-2">
                               <div className={`font-black flex items-center gap-1.5 pb-1 border-b border-slate-900/50 ${compileOutput.success ? 'text-green-400' : 'text-red-400'}`}>
-                                {compileOutput.success ? <CheckCircle2 size={14}/> : <XCircle size={14}/>}
+                                {compileOutput.success ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
                                 {compileOutput.success ? 'CONGRATULATIONS! ALL TESTS PASSED' : 'SOME TESTS FAILED'}
                               </div>
                               <div className="space-y-1 font-mono text-[11px]">
@@ -1304,7 +1336,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center transition-all active:scale-95 ${isChallengePassed
                               ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/10'
                               : 'bg-slate-800/50 text-slate-500 border border-slate-800/80 cursor-not-allowed'
-                            }`}
+                              }`}
                           >
                             FINISH CHALLENGE
                             <ArrowRight size={12} className="ml-1" />
@@ -1386,11 +1418,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
                     {/* Answer Explanation */}
                     {isAnswerChecked && (
-                      <div className={`p-5 rounded-2xl border-2 animate-scale-up relative overflow-hidden ${
-                        selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
-                          ? 'bg-green-50/45 dark:bg-green-950/10 border-green-200/50 dark:border-green-900/20 text-green-800 dark:text-green-300'
-                          : 'bg-red-50/45 dark:bg-red-950/10 border-red-200/50 dark:border-red-900/20 text-red-800 dark:text-red-300'
-                      }`}>
+                      <div className={`p-5 rounded-2xl border-2 animate-scale-up relative overflow-hidden ${selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
+                        ? 'bg-green-50/45 dark:bg-green-950/10 border-green-200/50 dark:border-green-900/20 text-green-800 dark:text-green-300'
+                        : 'bg-red-50/45 dark:bg-red-950/10 border-red-200/50 dark:border-red-900/20 text-red-800 dark:text-red-300'
+                        }`}>
                         <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
                           {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? (
                             <CheckCircle2 size={72} />
@@ -1414,8 +1445,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           onClick={handleCheckAnswer}
                           disabled={selectedOption === null}
                           className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-bold text-base transition-all duration-200 shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none hover:-translate-y-[1px] ${selectedOption !== null
-                              ? 'bg-primary text-white hover:bg-indigo-700 shadow-[0_4px_0_0_rgba(67,56,202,0.3)]'
-                              : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600'
+                            ? 'bg-primary text-white hover:bg-indigo-700 shadow-[0_4px_0_0_rgba(67,56,202,0.3)]'
+                            : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600'
                             }`}
                         >
                           CHECK ANSWER
