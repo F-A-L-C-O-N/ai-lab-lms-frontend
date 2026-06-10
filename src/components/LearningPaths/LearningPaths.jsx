@@ -1,15 +1,10 @@
 import React from 'react';
-import { Brain, Cpu, Database, Eye, MessageSquare, Sparkles, Lock, Flame, Check, Calendar } from 'lucide-react';
+import { Lock, Flame, Check } from 'lucide-react';
 import { roadmapData } from '../../data/roadmapData';
+import { getLearningPaths } from '../../data/topics';
 
-const paths = [
-  { id: 1, name: 'Machine Learning Foundations', icon: Database, color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400', progress: 65 },
-  { id: 2, name: 'Deep Learning & Neural Nets', icon: Brain, color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400', progress: 40 },
-  { id: 3, name: 'Natural Language Processing', icon: MessageSquare, color: 'bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400', progress: 15 },
-  { id: 4, name: 'Computer Vision', icon: Eye, color: 'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400', progress: 0 },
-  { id: 5, name: 'Reinforcement Learning', icon: Cpu, color: 'bg-cyan-100 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400', progress: 0 },
-  { id: 6, name: 'Generative AI & LLMs', icon: Sparkles, color: 'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400', progress: 0 },
-];
+const paths = getLearningPaths();
+
 const LearningPaths = ({ onCardClick, userName }) => {
   // Load and verify streak info dynamically
   const getStreakInfo = () => {
@@ -168,10 +163,7 @@ const LearningPaths = ({ onCardClick, userName }) => {
                   <Lock size={16} className="text-slate-400 dark:text-slate-500" />
                 </div>
               )}
-              
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${path.locked ? 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500' : path.color} mb-6`}>
-                <path.icon size={32} />
-              </div>
+
               
               <h3 className="text-xl font-bold text-text-primary dark:text-slate-100 mb-2">{path.name}</h3>
               

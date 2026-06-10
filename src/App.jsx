@@ -31,6 +31,9 @@ function App() {
           if (data.name) {
             setUserName(data.name);
             localStorage.setItem('userName', data.name);
+            if (data.email) {
+              localStorage.setItem('userEmail', data.email);
+            }
           }
         })
         .catch(err => {
@@ -38,6 +41,7 @@ function App() {
           // Session invalid — force logout
           localStorage.removeItem('isAuthenticated');
           localStorage.removeItem('userName');
+          localStorage.removeItem('userEmail');
           setIsAuthenticated(false);
           setUserName('');
           setView({ page: 'landing', courseName: null });
@@ -45,6 +49,7 @@ function App() {
     } else {
       setUserName('');
       localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
     }
   }, [isAuthenticated]);
 
@@ -75,6 +80,7 @@ function App() {
     }
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userName');
+    localStorage.removeItem('userEmail');
     setIsAuthenticated(false);
     handleNavigate('landing');
   };

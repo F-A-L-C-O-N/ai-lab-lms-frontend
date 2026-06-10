@@ -5,6 +5,7 @@ import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
 import { roadmapData } from '../data/roadmapData';
 import PythonEditor from '../components/PythonEditor';
+import { runCode } from '../api/api';
 
 const transpilePythonToJS = (pyCode) => {
   let code = pyCode;
@@ -186,6 +187,17 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     return saved ? JSON.parse(saved) : {};
   });
 
+  const handleResetProgress = () => {
+    if (window.confirm("Are you sure you want to reset your course progress? This will lock all milestones except the first one and return the car to the beginning.")) {
+      const updated = { ...completedSteps };
+      delete updated[courseName];
+      setCompletedSteps(updated);
+      localStorage.setItem('AI Lab Learning Portal_completed_steps', JSON.stringify(updated));
+      setCurrentAnimatedIndex(0);
+      setCarCoords({ x: 300, y: 100, angle: 90 });
+    }
+  };
+
   // Window width state for responsive roadmap layout
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
 
@@ -214,6 +226,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const [userCode, setUserCode] = useState('');
   const [compileOutput, setCompileOutput] = useState(null);
   const [isChallengePassed, setIsChallengePassed] = useState(false);
+  const [isCompiling, setIsCompiling] = useState(false);
 
 
 
@@ -236,7 +249,9 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     const handleDragMove = (e) => {
       const clientY = e.clientY || e.touches?.[0]?.clientY || 0;
       const delta = clientY - dragStartY.current;
-      const newHeight = Math.max(150, Math.min(600, dragStartHeight.current + delta));
+      // Total height is 700px. Header + divider = ~46px. Console min-h = 180px.
+      // Maximum editor height = 700 - 46 - 180 = 474px.
+      const newHeight = Math.max(150, Math.min(474, dragStartHeight.current + delta));
       setEditorHeight(newHeight);
     };
     const handleDragEnd = () => setIsDragging(false);
@@ -255,6 +270,17 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   // Helper to determine milestone lock/complete status
   const isMilestoneCompleted = (milestone) => {
     const completedList = completedSteps[courseName] || [];
+    if (milestone.type === 'topic') {
+      const isStudyDone = completedList.includes(milestone.id);
+      const isChallenge = milestone.stepData.study.code ? true : false;
+      const hasPractice = isChallenge || (milestone.stepData.quiz && milestone.stepData.quiz.length > 0);
+      if (hasPractice) {
+        const practiceId = milestone.id.replace('-topic', '-practice');
+        const isPracticeDone = completedList.includes(practiceId);
+        return isStudyDone && isPracticeDone;
+      }
+      return isStudyDone;
+    }
     return completedList.includes(milestone.id);
   };
 
@@ -263,8 +289,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     if (index <= 0) return true;
     const prevMilestone = milestones[index - 1];
     if (!prevMilestone) return false;
-    const completedList = completedSteps[courseName] || [];
-    return completedList.includes(prevMilestone.id);
+    return isMilestoneCompleted(prevMilestone);
   };
 
   const handleStartLesson = (milestone) => {
@@ -276,6 +301,30 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     setSelectedOption(null);
     setIsAnswerChecked(false);
     setScore(0);
+  };
+
+  const handleStartPracticeForMilestone = (milestone) => {
+    const isChallenge = milestone.stepData.study.code ? true : false;
+    const practiceMilestone = {
+      ...milestone,
+      id: milestone.id.replace('-topic', '-practice'),
+      type: isChallenge ? 'challenge' : 'quiz',
+      title: isChallenge ? `Coding Challenge: ${milestone.title}` : `${milestone.title} Quiz`,
+      duration: isChallenge ? '30 min' : '10 min',
+    };
+    setActiveStep(practiceMilestone);
+    setLessonPhase('quiz');
+    setViewMode('lesson');
+    if (isChallenge) {
+      setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+      setCompileOutput(null);
+      setIsChallengePassed(false);
+    } else {
+      setCurrentQuestionIdx(0);
+      setSelectedOption(null);
+      setIsAnswerChecked(false);
+      setScore(0);
+    }
   };
 
   const handleStartPractice = () => {
@@ -291,54 +340,52 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     }
   };
 
-  const handleCompileRun = () => {
+  const handleCompileRun = async () => {
     const challenge = activeStep.stepData.codingChallenge;
     if (!challenge) return;
 
+    setIsCompiling(true);
+    setCompileOutput(null);
+
     try {
-      const jsCode = transpilePythonToJS(userCode);
-      const userFunc = new Function(`
-        ${jsCode}
-        try { return minMaxNormalize; } catch(e){}
-        try { return relu; } catch(e){}
-        try { return tokenize; } catch(e){}
-        try { return sigmoid; } catch(e){}
-        try { return calculateGini; } catch(e){}
-        try { return linearKernel; } catch(e){}
-        try { return euclideanDistance; } catch(e){}
-        throw new Error("Could not find the target function. Make sure it is defined correctly.");
-      `)();
+      // Send the code to the compilation server
+      const result = await runCode({
+        code: userCode,
+        stdin: '',
+      });
 
-      let allPassed = true;
+      // Server returned an error in stderr
+      if (result.stderr) {
+        setCompileOutput({ success: false, error: result.stderr });
+        setIsChallengePassed(false);
+        return;
+      }
+
+      // Compare stdout against test cases
+      const stdout = result.stdout.trim();
       const testResults = challenge.testCases.map((tc, idx) => {
-        const inputCopy = JSON.parse(JSON.stringify(tc.input));
-        let output;
-
-        if (Array.isArray(tc.input) && tc.input.length === 2 && Array.isArray(tc.input[0])) {
-          output = userFunc(inputCopy[0], inputCopy[1]);
-        } else {
-          output = userFunc(inputCopy);
-        }
-
-        const passed = Array.isArray(tc.expected)
-          ? JSON.stringify(output) === JSON.stringify(tc.expected)
-          : Math.abs(output - tc.expected) < 1e-4;
-
-        if (!passed) allPassed = false;
+        const expectedStr = JSON.stringify(tc.expected);
+        // Simple line-based matching — each test case output on a line
+        const outputLines = stdout.split('\n');
+        const got = outputLines[idx] !== undefined ? outputLines[idx].trim() : '';
+        const passed = got === expectedStr || got === String(tc.expected);
         return {
           caseIdx: idx + 1,
           input: JSON.stringify(tc.input),
-          expected: JSON.stringify(tc.expected),
-          got: JSON.stringify(output),
-          passed
+          expected: expectedStr,
+          got: got || '(no output)',
+          passed,
         };
       });
 
-      setCompileOutput({ success: allPassed, results: testResults });
+      const allPassed = testResults.every(r => r.passed);
+      setCompileOutput({ success: allPassed, results: testResults, stdout });
       setIsChallengePassed(allPassed);
     } catch (err) {
       setCompileOutput({ success: false, error: err.message });
       setIsChallengePassed(false);
+    } finally {
+      setIsCompiling(false);
     }
   };
 
@@ -449,21 +496,9 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
         stepData: step,
         stepIndex: index
       });
-
-      // 2. Quiz / Challenge Node
-      const isChallenge = step.study.code ? true : false;
-      list.push({
-        id: `step-${step.id}-practice`,
-        stepId: step.id,
-        title: isChallenge ? `Coding Challenge: ${step.title}` : `${step.title} Quiz`,
-        type: isChallenge ? 'challenge' : 'quiz',
-        duration: isChallenge ? '30 min' : '10 min',
-        stepData: step,
-        stepIndex: index
-      });
     });
 
-    // 3. Final Course Assessment
+    // 2. Final Course Assessment
     if (courseSteps.length > 0) {
       list.push({
         id: 'final-assessment',
@@ -481,8 +516,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const milestones = getMilestones(steps);
 
   const getMilestoneStatus = (milestone, index) => {
-    const completedList = completedSteps[courseName] || [];
-    const isCompleted = completedList.includes(milestone.id);
+    const isCompleted = isMilestoneCompleted(milestone);
     if (isCompleted) {
       return 'completed';
     }
@@ -507,24 +541,53 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     return { X, Y };
   };
 
-  const H = 100 + milestones.length * 180;
-
-  // Calculations
-  const completedList = completedSteps[courseName] || [];
-  const completedCount = milestones.filter(m => completedList.includes(m.id)).length;
-  const progressPercent = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
-
-  // Custom Top Stats Bar Calculations
-  const completedTopics = milestones.filter(m => m.type === 'topic' && completedList.includes(m.id)).length;
-  const completedQuizzes = milestones.filter(m => m.type === 'quiz' && completedList.includes(m.id)).length;
-  const completedChallenges = milestones.filter(m => m.type === 'challenge' && completedList.includes(m.id)).length;
-
   // Path reference state for dynamic SVG path measurements
   const [pathElement, setPathElement] = useState(null);
   const [milestoneDistances, setMilestoneDistances] = useState([]);
   const [currentAnimatedIndex, setCurrentAnimatedIndex] = useState(0);
   const [carCoords, setCarCoords] = useState({ x: 300, y: 100, angle: 90 });
   const [isMoving, setIsMoving] = useState(false);
+
+  // Calculations
+  const completedList = completedSteps[courseName] || [];
+  const completedCount = milestones.filter(m => isMilestoneCompleted(m)).length;
+  const progressPercent = milestones.length > 0 ? Math.round((completedCount / milestones.length) * 100) : 0;
+
+  // Custom Top Stats Bar Calculations
+  const completedTopics = steps.filter(step => completedList.includes(`step-${step.id}-topic`)).length;
+  const completedQuizzes = steps.filter(step => {
+    const isChallenge = step.study.code ? true : false;
+    return !isChallenge && completedList.includes(`step-${step.id}-practice`);
+  }).length;
+  const completedChallenges = steps.filter(step => {
+    const isChallenge = step.study.code ? true : false;
+    return isChallenge && completedList.includes(`step-${step.id}-practice`);
+  }).length;
+
+  const isMilestoneRevealed = (index) => {
+    if (index === 0) return true;
+    return currentAnimatedIndex >= index - 0.5;
+  };
+
+  const getGateCoords = (i) => {
+    if (!pathElement || milestoneDistances.length <= i) {
+      // Fallback using average of milestone coordinates
+      const prev = getMilestoneCoords(i - 1, milestones.length);
+      const curr = getMilestoneCoords(i, milestones.length);
+      return { x: (prev.X + curr.X) / 2, y: (prev.Y + curr.Y) / 2, angle: 90 };
+    }
+    const startDist = milestoneDistances[i - 1];
+    const endDist = milestoneDistances[i];
+    const midDist = (startDist + endDist) / 2;
+    const pt = pathElement.getPointAtLength(midDist);
+    const ptAhead = pathElement.getPointAtLength(Math.min(pathElement.getTotalLength(), midDist + 1));
+    const angle = Math.atan2(ptAhead.y - pt.y, ptAhead.x - pt.x) * (180 / Math.PI);
+    return { x: pt.x, y: pt.y, angle };
+  };
+
+  const revealedMilestones = milestones.filter((m, idx) => isMilestoneRevealed(idx));
+  const H = 100 + (Math.max(1, milestones.length) - 1) * 180 + 100;
+  const cloudStartUpdateY = 100 + currentAnimatedIndex * 180 + 90;
 
   // Construct a single continuous path connecting all milestones
   const getFullPathD = () => {
@@ -615,20 +678,59 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
       return;
     }
 
+    let activeAnimation = null;
+    let activeTimeout = null;
+
     if (targetIdx !== currentAnimatedIndex) {
-      setIsMoving(true);
-      const controls = animate(currentAnimatedIndex, targetIdx, {
-        duration: 2.2,
-        ease: "easeInOut",
-        onUpdate: (latest) => {
-          setCurrentAnimatedIndex(latest);
-          updateCoords(latest);
-        },
-        onComplete: () => {
-          setIsMoving(false);
-        }
-      });
-      return () => controls.stop();
+      const start = currentAnimatedIndex;
+      const end = targetIdx;
+
+      if (end > start && Math.floor(start) < Math.floor(end)) {
+        const gate = Math.floor(start) + 0.5;
+        
+        setIsMoving(true);
+        activeAnimation = animate(start, gate, {
+          duration: 1.1,
+          ease: "easeOut",
+          onUpdate: (latest) => {
+            setCurrentAnimatedIndex(latest);
+            updateCoords(latest);
+          },
+          onComplete: () => {
+            activeTimeout = setTimeout(() => {
+              activeAnimation = animate(gate, end, {
+                duration: 1.1,
+                ease: "easeIn",
+                onUpdate: (latest) => {
+                  setCurrentAnimatedIndex(latest);
+                  updateCoords(latest);
+                },
+                onComplete: () => {
+                  setIsMoving(false);
+                }
+              });
+            }, 1000);
+          }
+        });
+      } else {
+        setIsMoving(true);
+        activeAnimation = animate(start, end, {
+          duration: 2.2,
+          ease: "easeInOut",
+          onUpdate: (latest) => {
+            setCurrentAnimatedIndex(latest);
+            updateCoords(latest);
+          },
+          onComplete: () => {
+            setIsMoving(false);
+          }
+        });
+      }
+
+      return () => {
+        if (activeAnimation) activeAnimation.stop();
+        if (activeTimeout) clearTimeout(activeTimeout);
+      };
     } else {
       updateCoords(targetIdx);
     }
@@ -716,7 +818,18 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 <div>
                   <div className="flex justify-between items-center text-xs font-black text-text-primary dark:text-slate-200 mb-2">
                     <span>Overall Completion</span>
-                    <span className="text-green-600 dark:text-green-400">{progressPercent}%</span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-600 dark:text-green-400">{progressPercent}%</span>
+                      {completedList.length > 0 && (
+                        <button
+                          onClick={handleResetProgress}
+                          className="text-[#6C63FF] hover:text-[#5b52e0] dark:text-indigo-400 dark:hover:text-indigo-300 font-bold hover:underline flex items-center text-[11px]"
+                          title="Reset Course Progress"
+                        >
+                          (Reset Progress)
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-4 overflow-hidden p-[2px] border border-border dark:border-slate-750">
                     <div
@@ -779,7 +892,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
           </div>
 
           {/* Winding Road Journey Section */}
-          <div className="flex justify-center items-center py-12 overflow-x-hidden md:overflow-x-visible">
+          <div className="flex justify-center items-center pt-12 pb-0 overflow-x-hidden md:overflow-x-visible">
             <div
               className="relative w-full max-w-[600px]"
               style={{ height: `${H}px` }}
@@ -787,7 +900,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
               {/* Curved SVG Road */}
               <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
+                className="absolute inset-0 w-full h-full pointer-events-none z-10"
                 viewBox={`0 0 600 ${H}`}
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
@@ -801,7 +914,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   className="pointer-events-none"
                 />
 
-                {milestones.slice(0, -1).map((_, i) => {
+                 {milestones.slice(0, -1).map((_, i) => {
                   const start = getMilestoneCoords(i, milestones.length);
                   const end = getMilestoneCoords(i + 1, milestones.length);
                   const pathD = `M ${start.X} ${start.Y} C ${start.X} ${start.Y + 90}, ${end.X} ${end.Y - 90}, ${end.X} ${end.Y}`;
@@ -862,6 +975,154 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 />
               ))}
 
+
+
+              {/* Full-Screen Cloud Overlay (Magical Fog of War) */}
+              {currentAnimatedIndex < milestones.length - 1 && (
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 w-[220vw] pointer-events-none transition-all duration-300"
+                  style={{
+                    top: `${(cloudStartUpdateY / H) * 100}%`,
+                    height: `${H - cloudStartUpdateY + 300}px`, // extend past bottom of road to cover page bottom
+                    zIndex: 35
+                  }}
+                >
+                  {/* Embedded keyframe styles for smooth cloud movements */}
+                  <style>{`
+                    @keyframes floatCloudLeft {
+                      0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+                      50% { transform: translate(-15px, -8px) scale(1.04) rotate(-2deg); }
+                    }
+                    @keyframes floatCloudRight {
+                      0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+                      50% { transform: translate(15px, -10px) scale(1.03) rotate(2deg); }
+                    }
+                    @keyframes floatMist {
+                      0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
+                      50% { transform: translateY(-20px) translateX(15px) scale(1.15); }
+                    }
+                  `}</style>
+
+                  <div className="relative w-full h-full overflow-hidden">
+                    {/* Background Soft Mist Layer */}
+                    <div
+                      className="absolute inset-x-0 top-0 h-[140px] bg-gradient-to-b from-transparent via-[#F0F9FF]/95 to-[#F0F9FF] dark:via-slate-950/95 dark:to-slate-950"
+                    />
+                    {/* Make the solid background color go all the way down */}
+                    <div
+                      className="absolute inset-x-0 top-[140px] bottom-0 bg-[#F0F9FF] dark:bg-slate-950"
+                    />
+
+                    {/* SVG Definitions for Premium Gradients */}
+                    <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
+                      <defs>
+                        <linearGradient id="whitePinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" className="text-white dark:text-[#1E293B]" stopColor="currentColor" />
+                          <stop offset="60%" className="text-[#F8FCFF] dark:text-[#0F172A]" stopColor="currentColor" />
+                          <stop offset="100%" className="text-[#E0F2FE] dark:text-slate-950" stopColor="currentColor" />
+                        </linearGradient>
+                        <linearGradient id="cottonCandyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" className="text-[#F0F9FF] dark:text-slate-800" stopColor="currentColor" />
+                          <stop offset="50%" className="text-[#E0F2FE] dark:text-[#1E293B]" stopColor="currentColor" />
+                          <stop offset="100%" className="text-[#BAE6FD] dark:text-[#0F172A]" stopColor="currentColor" />
+                        </linearGradient>
+                      </defs>
+                    </svg>
+
+                    {/* Floating Mist Particles */}
+                    {[...Array(25)].map((_, idx) => {
+                      const size = 30 + (idx * 8) % 50; // 30px to 80px (larger mist)
+                      const left = 5 + (idx * 9) % 90;
+                      const top = 30 + (idx * 37) % Math.max(300, H - cloudStartUpdateY + 150);
+                      const duration = 6 + (idx * 2) % 8;
+                      const delay = (idx * 0.8) % 4;
+                      return (
+                        <div
+                          key={`mist-part-${idx}`}
+                          className="absolute rounded-full bg-gradient-to-br from-white/50 to-[#E0F2FE]/60 dark:from-indigo-500/10 dark:to-purple-500/5 blur-[6px]"
+                          style={{
+                            width: `${size}px`,
+                            height: `${size}px`,
+                            left: `${left}%`,
+                            top: `${top}px`,
+                            animation: `floatMist ${duration}s infinite ease-in-out`,
+                            animationDelay: `${delay}s`,
+                            opacity: 0.75
+                          }}
+                        />
+                      );
+                    })}
+
+                    {/* Dense overlapping cloud rows filling the entire covered height */}
+                    {(() => {
+                      const rows = [];
+                      const startY = -40;
+                      // Stop exactly at the end of the road plus bottom padding
+                      const endY = H - cloudStartUpdateY + 260;
+                      // Place a row of clouds every 55px down the height for maximum overlap and no gaps
+                      for (let y = startY; y < endY; y += 55) {
+                        rows.push(y);
+                      }
+
+                      return rows.map((yVal, rowIndex) => {
+                        // More clouds per row (7 clouds) to ensure full horizontal overlaps
+                        const cloudCount = rowIndex === 0 ? 8 : 7; 
+                        return (
+                          <div key={`cloud-row-${rowIndex}`} className="absolute w-full" style={{ top: `${yVal}px` }}>
+                            {[...Array(cloudCount)].map((_, colIndex) => {
+                              // Highly staggered offsets to lock into the gaps of the adjacent rows
+                              const offset = (rowIndex % 2 === 0) ? 0 : 7;
+                              const randomShift = ((colIndex + rowIndex) % 3) * 5 - 10;
+                              const leftPercent = (colIndex * 100) / (cloudCount - 1) - 12 + offset + randomShift;
+                              
+                              const isLeftFloat = (rowIndex + colIndex) % 2 === 0;
+                              const scale = 1.1 + ((colIndex + rowIndex) % 4) * 0.15; // Larger scale (1.1x to 1.7x)
+                              const duration = 7 + (colIndex * 1.5 + rowIndex) % 5;
+                              const animName = isLeftFloat ? 'floatCloudLeft' : 'floatCloudRight';
+
+                              return (
+                                <div
+                                  key={`cloud-item-${rowIndex}-${colIndex}`}
+                                  className="absolute"
+                                  style={{
+                                    left: `${leftPercent}%`,
+                                    transform: `scale(${scale})`,
+                                    animation: `${animName} ${duration}s infinite ease-in-out`,
+                                    opacity: 0.50
+                                  }}
+                                >
+                                  {/* Larger cloud width/height for seamless locking and zero space gaps */}
+                                  <svg width="360" height="210" viewBox="0 0 100 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_12px_26px_rgba(186,230,253,0.36)] dark:drop-shadow-[0_12px_26px_rgba(15,23,42,0.6)]">
+                                    <path
+                                      d="M 20 45 C 15 45, 10 40, 10 33 C 10 24, 18 20, 26 22 C 30 12, 50 12, 56 18 C 64 14, 76 18, 76 28 C 82 28, 88 34, 86 41 C 84 46, 78 48, 72 47 C 65 52, 35 52, 20 45 Z"
+                                      fill="url(#cottonCandyGrad)"
+                                    />
+                                    <path
+                                      d="M 24 40 C 20 40, 16 36, 17 32 C 18 25, 24 22, 30 24 C 34 16, 48 16, 52 22 C 58 19, 66 22, 67 29 C 72 29, 76 33, 75 38 C 70 42, 45 44, 24 40 Z"
+                                      fill="url(#whitePinkGrad)"
+                                      opacity="0.88"
+                                    />
+                                    {rowIndex === 0 && (
+                                      <path
+                                        d="M 20 45 C 15 45, 10 40, 10 33 C 10 24, 18 20, 26 22 C 30 12, 50 12, 56 18 C 64 14, 76 18, 76 28"
+                                        className="stroke-white dark:stroke-slate-500"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        opacity="0.85"
+                                      />
+                                    )}
+                                  </svg>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+
               {/* Animated Progress Vehicle (Sports Car) */}
               <div
                 className="absolute z-40 pointer-events-none transition-transform duration-75"
@@ -897,6 +1158,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
               {/* Milestone Node Buttons & Info Cards */}
               {milestones.map((milestone, index) => {
+                if (!isMilestoneRevealed(index)) return null;
+
                 const coords = getMilestoneCoords(index, milestones.length);
                 const status = getMilestoneStatus(milestone, index);
                 const isUnlocked = status !== 'locked';
@@ -928,15 +1191,21 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   if (status === 'locked') return;
 
                   if (milestone.type === 'topic') {
-                    handleStartLesson(milestone);
-                  } else if (milestone.type === 'quiz' || milestone.type === 'challenge') {
-                    setActiveStep(milestone);
-                    setLessonPhase('quiz');
-                    setViewMode('lesson');
-                    setCurrentQuestionIdx(0);
-                    setSelectedOption(null);
-                    setIsAnswerChecked(false);
-                    setScore(0);
+                    const isStudyDone = completedList.includes(milestone.id);
+                    if (!isStudyDone) {
+                      handleStartLesson(milestone);
+                    } else {
+                      const isChallenge = milestone.stepData.study.code ? true : false;
+                      const hasPractice = isChallenge || (milestone.stepData.quiz && milestone.stepData.quiz.length > 0);
+                      const practiceId = milestone.id.replace('-topic', '-practice');
+                      const isPracticeDone = completedList.includes(practiceId);
+                      if (hasPractice && !isPracticeDone) {
+                        handleStartPracticeForMilestone(milestone);
+                      } else {
+                        // Both done, default to review study
+                        handleStartLesson(milestone);
+                      }
+                    }
                   } else if (milestone.type === 'assessment') {
                     const allQuestions = [];
                     steps.forEach(s => {
@@ -967,8 +1236,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 };
 
                 return (
-                  <div
+                  <motion.div
                     key={milestone.id}
+                    initial={{ scale: 0.6, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', damping: 15, stiffness: 100 }}
                     className="absolute -translate-x-1/2 -translate-y-1/2 z-30"
                     style={{
                       left: `${(coords.X / 600) * 100}%`,
@@ -1032,13 +1304,16 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       })()}
                     >
                       <div
-                        className={`${isSmallScreen ? 'p-2.5 rounded-2xl' : 'p-4 rounded-3xl'} border-2 transition-all duration-300 ${status === 'current'
-                          ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)]'
-                          : status === 'completed'
-                            ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm'
-                            : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60'
-                          }`}
+                        onClick={handleClick}
+                        className={`${isSmallScreen ? 'p-2.5 rounded-2xl' : 'p-4 rounded-3xl'} border-2 transition-all duration-300 cursor-pointer ${
+                          status === 'current'
+                            ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)] hover:scale-[1.03] hover:shadow-[0_6px_16px_rgba(108,99,255,0.22)]'
+                            : status === 'completed'
+                              ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm hover:scale-[1.03]'
+                              : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60 cursor-not-allowed'
+                        }`}
                       >
+                        {/* Card Header */}
                         <div className="flex items-center space-x-1 mb-1 justify-start">
                           <span className={isSmallScreen ? 'text-xs' : 'text-sm'}>{emoji}</span>
                           <span className={`${isSmallScreen ? 'text-[7px]' : 'text-[9px]'} font-black uppercase tracking-wider text-text-secondary dark:text-slate-400 truncate`}>
@@ -1046,16 +1321,20 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           </span>
                         </div>
 
+                        {/* Title */}
                         <h4 className={`${isTinyScreen ? 'text-[9px]' : (isSmallScreen ? 'text-[10px]' : 'text-sm')} font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-left`}>
                           {milestone.title}
                         </h4>
 
+                        {/* Footer details */}
                         <div className={`flex ${isSmallScreen ? 'flex-col gap-0.5' : 'items-center justify-between'} ${isSmallScreen ? 'mt-1.5 pt-1' : 'mt-3 pt-2'} border-t border-slate-100 dark:border-slate-800 ${isSmallScreen ? 'text-[7px]' : 'text-[9px]'} font-bold text-text-secondary dark:text-slate-450`}>
                           <span className="flex items-center">
-                            {milestone.type === 'challenge' && (
-                              <Code size={isSmallScreen ? 8 : 10} className="mr-0.5 text-[#6C63FF]" />
-                            )}
-                            {milestone.duration}
+                            {(() => {
+                              if (milestone.type !== 'topic') return milestone.duration;
+                              const isChallenge = milestone.stepData.study.code ? true : false;
+                              const hasPractice = isChallenge || (milestone.stepData.quiz && milestone.stepData.quiz.length > 0);
+                              return hasPractice ? (isChallenge ? '45 min' : '25 min') : '15 min';
+                            })()}
                           </span>
                           <span className={
                             status === 'completed'
@@ -1070,7 +1349,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       </div>
                     </div>
 
-                  </div>
+                  </motion.div>
                 );
               })}
 
@@ -1079,7 +1358,6 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
         </main>
 
-        <Footer />
       </div>
 
       {/* 2. IMMERSIVE LESSON VIEW (FULL SCREEN) */}
@@ -1159,24 +1437,112 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     </div>
                   )}
 
-                  <div className="pt-8 flex justify-end">
-                    {activeStep.type === 'topic' ? (
-                      <button
-                        onClick={handleCompleteStep}
-                        className="w-full sm:w-auto bg-[#4CAF50] hover:bg-green-600 text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(56,142,60,1)] active:translate-y-[4px] active:shadow-none transition-all"
-                      >
-                        COMPLETE STUDY
-                        <ArrowRight size={18} className="ml-1.5" />
-                      </button>
-                    ) : (
-                      <button
-                        onClick={handleStartPractice}
-                        className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none transition-all"
-                      >
-                        START PRACTICE
-                        <ArrowRight size={18} className="ml-1.5" />
-                      </button>
-                    )}
+                  <div className="pt-8 flex gap-4 justify-end">
+                    {(() => {
+                      const isChallenge = activeStep.stepData.study.code ? true : false;
+                      const hasPractice = isChallenge || (activeStep.stepData.quiz && activeStep.stepData.quiz.length > 0);
+                      
+                      const practiceId = activeStep.id.replace('-topic', '-practice');
+                      const isPracticeDone = completedSteps[courseName]?.includes(practiceId);
+
+                      if (!hasPractice) {
+                        return (
+                          <button
+                            onClick={handleCompleteStep}
+                            className="w-full sm:w-auto bg-[#4CAF50] hover:bg-green-600 text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(56,142,60,1)] active:translate-y-[4px] active:shadow-none transition-all"
+                          >
+                            COMPLETE STUDY
+                            <ArrowRight size={18} className="ml-1.5" />
+                          </button>
+                        );
+                      }
+
+                      if (isPracticeDone) {
+                        return (
+                          <>
+                            <button
+                              onClick={() => {
+                                setViewMode('roadmap');
+                                setActiveStep(null);
+                              }}
+                              className="w-full sm:w-auto bg-slate-200 hover:bg-slate-350 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 px-6 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center transition-all"
+                            >
+                              BACK TO ROADMAP
+                            </button>
+                            <button
+                              onClick={() => {
+                                const practiceMilestone = {
+                                  ...activeStep,
+                                  id: practiceId,
+                                  type: isChallenge ? 'challenge' : 'quiz',
+                                  title: isChallenge ? `Coding Challenge: ${activeStep.title}` : `${activeStep.title} Quiz`,
+                                  duration: isChallenge ? '30 min' : '10 min',
+                                };
+                                setActiveStep(practiceMilestone);
+                                setLessonPhase('quiz');
+                                if (isChallenge) {
+                                  setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+                                  setCompileOutput(null);
+                                  setIsChallengePassed(false);
+                                } else {
+                                  setCurrentQuestionIdx(0);
+                                  setSelectedOption(null);
+                                  setIsAnswerChecked(false);
+                                  setScore(0);
+                                }
+                              }}
+                              className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-6 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none transition-all"
+                            >
+                              PRACTICE AGAIN
+                              <ArrowRight size={18} className="ml-1.5" />
+                            </button>
+                          </>
+                        );
+                      }
+
+                      // Practice exists and is not completed yet
+                      return (
+                        <button
+                          onClick={() => {
+                            // Mark study as completed first
+                            const completedList = completedSteps[courseName] || [];
+                            if (!completedList.includes(activeStep.id)) {
+                              const updated = {
+                                ...completedSteps,
+                                [courseName]: [...completedList, activeStep.id]
+                              };
+                              setCompletedSteps(updated);
+                              localStorage.setItem('AI Lab Learning Portal_completed_steps', JSON.stringify(updated));
+                            }
+
+                            // Transition to practice
+                            const practiceMilestone = {
+                              ...activeStep,
+                              id: practiceId,
+                              type: isChallenge ? 'challenge' : 'quiz',
+                              title: isChallenge ? `Coding Challenge: ${activeStep.title}` : `${activeStep.title} Quiz`,
+                              duration: isChallenge ? '30 min' : '10 min',
+                            };
+                            setActiveStep(practiceMilestone);
+                            setLessonPhase('quiz');
+                            if (isChallenge) {
+                              setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+                              setCompileOutput(null);
+                              setIsChallengePassed(false);
+                            } else {
+                              setCurrentQuestionIdx(0);
+                              setSelectedOption(null);
+                              setIsAnswerChecked(false);
+                              setScore(0);
+                            }
+                          }}
+                          className="w-full sm:w-auto bg-[#3B3B98] hover:bg-[#2e2e77] text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(46,46,119,1)] active:translate-y-[4px] active:shadow-none transition-all"
+                        >
+                          {isChallenge ? 'START CHALLENGE' : 'START QUIZ'}
+                          <ArrowRight size={18} className="ml-1.5" />
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -1227,7 +1593,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     </div>
 
                     {/* Right Column: Code Editor & Console Output Panel */}
-                    <div className="lg:col-span-8 flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '650px' }}>
+                    <div className="lg:col-span-8 flex flex-col bg-[#0B0F19] border border-slate-850 rounded-2xl overflow-hidden shadow-2xl" style={{ height: '700px' }}>
                       {/* Interactive Code Editor */}
                       <div className="flex flex-col relative">
                         {/* Chrome window header */}
@@ -1247,7 +1613,38 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                               </span>
                             </div>
                           </div>
-                          <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono">Python</span>
+                          <div className="flex items-center gap-2 py-1">
+                            <span className="font-bold uppercase tracking-wider text-[9px] text-slate-500 font-mono hidden sm:inline mr-1">Python</span>
+                            <button
+                              onClick={handleCompileRun}
+                              disabled={isCompiling}
+                              className={`border border-slate-700/50 px-3 py-1 rounded-lg font-bold text-[10px] flex items-center justify-center transition-all active:scale-95 ${isCompiling ? 'bg-slate-800 text-slate-400 cursor-wait' : 'bg-[#1E293B] hover:bg-[#334155] text-slate-100'}`}
+                            >
+                              {isCompiling ? (
+                                <>
+                                  <svg className="animate-spin mr-1 h-2.5 w-2.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                  COMPILING...
+                                </>
+                              ) : (
+                                <>
+                                  <Play size={10} className="mr-1 fill-current" />
+                                  COMPILE & RUN
+                                </>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={handleCompleteStep}
+                              disabled={!isChallengePassed}
+                              className={`px-3 py-1 rounded-lg font-bold text-[10px] flex items-center justify-center transition-all active:scale-95 ${isChallengePassed
+                                ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/10'
+                                : 'bg-slate-800/50 text-slate-500 border border-slate-800/80 cursor-not-allowed'
+                              }`}
+                            >
+                              FINISH CHALLENGE
+                              <ArrowRight size={10} className="ml-1" />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Code Editor Body - CodeMirror */}
@@ -1282,14 +1679,6 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
                       {/* Compile/Run Output Console */}
                       <div className="bg-[#080B11] flex flex-col font-mono text-xs flex-1 min-h-0">
-                        <div className="bg-[#121824] border-b border-slate-850 px-4 py-2.5 flex items-center justify-between text-[10px] text-slate-400 font-bold tracking-wider uppercase flex-shrink-0">
-                          <div className="flex gap-4">
-                            <span className={compileOutput ? "text-primary border-b-2 border-primary pb-0.5" : "text-slate-400"}>Console Output</span>
-
-                          </div>
-                          <span className="text-slate-500">Bash</span>
-                        </div>
-
                         <div className="p-4 space-y-2 overflow-y-auto flex-1 flex flex-col justify-center bg-[#080B11]">
                           {!compileOutput ? (
                             <div className="text-slate-500 text-center py-4 italic">
@@ -1302,6 +1691,14 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             </div>
                           ) : (
                             <div className="space-y-2">
+                              {/* Raw stdout from execution */}
+                              {compileOutput.stdout && (
+                                <div className="mb-2">
+                                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Program Output</div>
+                                  <pre className="text-[11px] text-emerald-400 font-mono whitespace-pre-wrap bg-slate-900/50 rounded-lg p-2.5 border border-slate-800/50">{compileOutput.stdout}</pre>
+                                </div>
+                              )}
+                              {/* Test case results */}
                               <div className={`font-black flex items-center gap-1.5 pb-1 border-b border-slate-900/50 ${compileOutput.success ? 'text-green-400' : 'text-red-400'}`}>
                                 {compileOutput.success ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
                                 {compileOutput.success ? 'CONGRATULATIONS! ALL TESTS PASSED' : 'SOME TESTS FAILED'}
@@ -1318,29 +1715,6 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                               </div>
                             </div>
                           )}
-                        </div>
-
-                        {/* Integrated Controls Footer Toolbar */}
-                        <div className="bg-[#121824]/90 border-t border-slate-850/80 px-4 py-3 flex items-center justify-end gap-3">
-                          <button
-                            onClick={handleCompileRun}
-                            className="bg-[#1E293B] hover:bg-[#334155] text-slate-100 border border-slate-700/50 px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center transition-all active:scale-95"
-                          >
-                            <Play size={12} className="mr-1.5 fill-current" />
-                            COMPILE & RUN
-                          </button>
-
-                          <button
-                            onClick={handleCompleteStep}
-                            disabled={!isChallengePassed}
-                            className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center transition-all active:scale-95 ${isChallengePassed
-                              ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/10'
-                              : 'bg-slate-800/50 text-slate-500 border border-slate-800/80 cursor-not-allowed'
-                              }`}
-                          >
-                            FINISH CHALLENGE
-                            <ArrowRight size={12} className="ml-1" />
-                          </button>
                         </div>
                       </div>
                     </div>

@@ -15,6 +15,7 @@ const editorTheme = EditorView.theme({
     color: '#abb2bf',
     fontSize: '13px',
     fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+    height: '100%',
   },
   '.cm-content': {
     caretColor: '#528bff',
@@ -80,6 +81,21 @@ const editorTheme = EditorView.theme({
   },
   '.cm-scroller': {
     overflow: 'auto',
+    height: '100%',
+  },
+  '.cm-scroller::-webkit-scrollbar': {
+    width: '6px',
+    height: '6px',
+  },
+  '.cm-scroller::-webkit-scrollbar-track': {
+    backgroundColor: '#0B0F19',
+  },
+  '.cm-scroller::-webkit-scrollbar-thumb': {
+    backgroundColor: '#1E293B',
+    borderRadius: '3px',
+  },
+  '.cm-scroller::-webkit-scrollbar-thumb:hover': {
+    backgroundColor: '#334155',
   },
   '.cm-line': {
     padding: '0 8px',
@@ -192,7 +208,7 @@ const PythonEditor = ({ value, onChange, height = 420 }) => {
   return (
     <div
       ref={editorContainerRef}
-      className="w-full overflow-auto"
+      className="w-full overflow-hidden"
       style={{ height: `${height}px` }}
     />
   );

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Star } from 'lucide-react';
 import { roadmapData } from '../../data/roadmapData';
+import { getPopularTracks } from '../../data/topics';
 
 const getProgress = (name) => {
   const steps = roadmapData[name] || [];
@@ -11,45 +12,8 @@ const getProgress = (name) => {
   return Math.round((completedList.length / totalMilestones) * 100);
 };
 
-const tracks = [
-  {
-    id: 1,
-    title: 'Linear & Logistic Regression',
-    description: 'Learn parameter optimization, gradient descent, and cost function minimization.',
-    time: '2 hours',
-    lessons: 12,
-    tag: 'Regression',
-    color: 'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-900/50'
-  },
-  {
-    id: 2,
-    title: 'Decision Trees & Random Forests',
-    description: 'Master entropy, information gain, and ensemble bagging algorithms.',
-    time: '4 hours',
-    lessons: 20,
-    tag: 'Trees/Forests',
-    color: 'bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400 border-green-200 dark:border-green-900/50'
-  },
-  {
-    id: 3,
-    title: 'Support Vector Machines (SVM)',
-    description: 'Understand margin maximization, support vectors, and kernel tricks.',
-    time: '3 hours',
-    lessons: 15,
-    tag: 'Classification',
-    color: 'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-900/50'
-  },
-  {
-    id: 4,
-    title: 'K-Means Clustering',
-    description: 'Dive into unsupervised learning, distance metrics, and centroid optimization.',
-    xp: 300,
-    time: '3 hours',
-    lessons: 14,
-    tag: 'Clustering',
-    color: 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-900/50'
-  }
-];
+const tracks = getPopularTracks();
+
 
 const PopularTracks = ({ onCardClick }) => {
   return (

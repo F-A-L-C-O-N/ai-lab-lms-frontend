@@ -47,6 +47,46 @@
   background: var(--color-text-secondary);
 }
 
+/* Custom dark scrollbar for coding workspace */
+.custom-dark-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-dark-scrollbar::-webkit-scrollbar-track {
+  background: #080B11;
+}
+
+.custom-dark-scrollbar::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 3px;
+}
+
+.custom-dark-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Custom scrollbars for CodeMirror editor */
+.cm-scroller::-webkit-scrollbar {
+  width: 6px !important;
+  height: 6px !important;
+}
+
+.cm-scroller::-webkit-scrollbar-track {
+  background: #0B0F19 !important;
+}
+
+.cm-scroller::-webkit-scrollbar-thumb {
+  background: #1E293B !important;
+  border-radius: 3px !important;
+}
+
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: #334155 !important;
+}
+
+
+
 /* Animations */
 @keyframes float {
   0% { transform: translateY(0px); }
@@ -95,4 +135,13 @@
   animation: wave 2.5s infinite;
   transform-origin: 70% 70%;
   display: inline-block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }

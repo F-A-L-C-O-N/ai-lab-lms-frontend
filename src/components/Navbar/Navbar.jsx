@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, Moon, Sun, User, ChevronDown, KeyRound, Eye, EyeOff, Lock, Check } from 'lucide-react';
+import { Menu, X, Moon, Sun, User, ChevronDown, KeyRound, Eye, EyeOff, Lock, Check, Mail, Flame, Trophy, BookOpen } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
 const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
@@ -12,6 +12,26 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
 
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  const getProfileStats = () => {
+    const completedStepsObj = JSON.parse(localStorage.getItem('AI Lab Learning Portal_completed_steps') || '{}');
+    let totalCompleted = 0;
+    Object.values(completedStepsObj).forEach(list => {
+      if (Array.isArray(list)) {
+        totalCompleted += list.length;
+      }
+    });
+
+    const savedStreak = localStorage.getItem('AI_Lab_Streak_Info');
+    const streakInfo = savedStreak ? JSON.parse(savedStreak) : { count: 0, bestStreak: 0 };
+
+    return {
+      totalCompleted,
+      streakCount: streakInfo.count || 0,
+      bestStreak: streakInfo.bestStreak || 0
+    };
+  };
   
   // Change password form states
   const [currentPassword, setCurrentPassword] = useState('');
@@ -167,7 +187,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
                   className="flex items-center gap-2 border-2 border-border dark:border-slate-800 hover:border-primary dark:hover:border-indigo-500 text-text-primary dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800/50 px-4 py-2 rounded-xl font-bold text-sm transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
                 >
                   <User size={18} className="text-primary dark:text-indigo-400" />
-                  <span>Profile</span>
+                  
                   <ChevronDown size={14} className={`transition-transform duration-200 ${isProfileDropdownOpen ? 'rotate-180' : ''}`} />
                 </button>
 
@@ -178,6 +198,16 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
                       <p className="text-xs font-semibold text-text-secondary dark:text-slate-400">Signed in as</p>
                       <p className="text-sm font-bold text-text-primary dark:text-slate-150 truncate">{localStorage.getItem('userName') || 'Learner'}</p>
                     </div>
+                    <button
+                      onClick={() => {
+                        setIsProfileDropdownOpen(false);
+                        setIsProfileModalOpen(true);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-semibold text-text-primary dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors text-left cursor-pointer"
+                    >
+                      <User size={16} className="text-primary dark:text-indigo-400" />
+                      Profile
+                    </button>
                     <button
                       onClick={() => {
                         setIsProfileDropdownOpen(false);
@@ -281,6 +311,16 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
                   <p className="text-[10px] font-semibold text-text-secondary dark:text-slate-400 uppercase tracking-wider">Account</p>
                   <p className="text-xs font-bold text-text-primary dark:text-slate-150 truncate">{localStorage.getItem('userName') || 'Learner'}</p>
                 </div>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsProfileModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm font-bold text-text-primary dark:text-slate-100 bg-slate-50 dark:bg-slate-800/40 border-2 border-border dark:border-slate-800 rounded-xl transition-all cursor-pointer shadow-sm active:scale-98"
+                >
+                  <User size={16} className="text-primary dark:text-indigo-400" />
+                  Profile
+                </button>
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
@@ -451,6 +491,97 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
                 UPDATE PASSWORD
               </button>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Profile Detail Modal */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative transition-all duration-300 animate-in zoom-in-95 duration-200">
+            {/* Close Button */}
+            <button
+              onClick={() => setIsProfileModalOpen(false)}
+              className="absolute top-4 right-4 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 transition-colors p-1 cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+
+            {/* Profile Header */}
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="h-20 w-20 rounded-full bg-gradient-to-tr from-primary to-indigo-500 flex items-center justify-center border-2 border-indigo-100 dark:border-indigo-900/30 mb-4 shadow-lg">
+                <User size={38} className="text-white" />
+              </div>
+              <h3 className="text-2xl font-black text-text-primary dark:text-slate-100 tracking-tight">
+                {localStorage.getItem('userName') || 'Learner'}
+              </h3>
+              <p className="text-xs font-semibold text-text-secondary dark:text-slate-400 mt-1 flex items-center justify-center gap-1">
+                <Mail size={12} className="text-slate-400" />
+                {localStorage.getItem('userEmail') || 'No email associated'}
+              </p>
+            </div>
+
+            {/* Stats Section */}
+            <div className="space-y-4 pt-4 border-t border-border dark:border-slate-800/80">
+              <h4 className="text-xs font-bold text-text-primary dark:text-slate-350 uppercase tracking-wider mb-2">
+                Learning Achievements
+              </h4>
+              
+              {(() => {
+                const stats = getProfileStats();
+                return (
+                  <div className="grid grid-cols-1 gap-3">
+                    {/* Active Streak */}
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800/80 rounded-2xl">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center border border-orange-100 dark:border-orange-900/30">
+                          <Flame size={18} className="text-orange-600 dark:text-orange-400 fill-orange-600 dark:fill-orange-400" />
+                        </div>
+                        <span className="text-sm font-bold text-text-primary dark:text-slate-200">Active Streak</span>
+                      </div>
+                      <span className="text-sm font-black text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 px-3 py-1 rounded-xl border border-orange-100 dark:border-orange-900/30">
+                        {stats.streakCount} {stats.streakCount === 1 ? 'Day' : 'Days'}
+                      </span>
+                    </div>
+
+                    {/* Best Streak */}
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800/80 rounded-2xl">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
+                          <Trophy size={18} className="text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
+                        </div>
+                        <span className="text-sm font-bold text-text-primary dark:text-slate-200">Best Streak</span>
+                      </div>
+                      <span className="text-sm font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                        {stats.bestStreak} {stats.bestStreak === 1 ? 'Day' : 'Days'}
+                      </span>
+                    </div>
+
+                    {/* Completed Steps */}
+                    <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800/80 rounded-2xl">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30">
+                          <BookOpen size={18} className="text-primary dark:text-indigo-400" />
+                        </div>
+                        <span className="text-sm font-bold text-text-primary dark:text-slate-200">Completed Steps</span>
+                      </div>
+                      <span className="text-sm font-black text-primary dark:text-indigo-450 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-1 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
+                        {stats.totalCompleted} {stats.totalCompleted === 1 ? 'Milestone' : 'Milestones'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Action button */}
+            <div className="mt-6">
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer text-center text-sm"
+              >
+                CLOSE PROFILE
+              </button>
+            </div>
           </div>
         </div>
       )}
