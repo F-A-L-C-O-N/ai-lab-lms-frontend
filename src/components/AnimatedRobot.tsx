@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import LottieLib from 'lottie-react';
-import { X, Send, Sparkles, Bot, User, MessageSquare, Zap } from 'lucide-react';
+import { X, Send, Sparkles, Bot, User, MessageSquare, Zap, Trophy, BookOpen } from 'lucide-react';
 
 // Vite CJS/ESM interop: lottie-react ships as CJS, so `.default` may be
 // the actual component when bundled. Fall back to the module itself if not.
@@ -37,6 +37,27 @@ export default function AnimatedRobot() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const chatboxRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isChatOpen &&
+        chatboxRef.current &&
+        !chatboxRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setIsChatOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isChatOpen]);
 
   const [botPositionIndex, setBotPositionIndex] = useState(0);
 
@@ -148,11 +169,12 @@ export default function AnimatedRobot() {
         <AnimatePresence>
           {isChatOpen && (
             <motion.div
+              ref={chatboxRef}
               initial={{ opacity: 0, y: 30, scale: 0.92 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 30, scale: 0.92 }}
               transition={{ type: 'spring', stiffness: 280, damping: 24 }}
-              className="pointer-events-auto w-[270px] sm:w-[380px] h-[440px] sm:h-[540px] flex flex-col rounded-[32px] overflow-hidden shadow-[0_20px_50px_rgba(99,102,241,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-200/60 dark:border-slate-800/80"
+              className="pointer-events-auto w-[300px] sm:w-[380px] h-[500px] sm:h-[600px] flex flex-col rounded-[32px] overflow-visible shadow-[0_20px_50px_rgba(99,102,241,0.15)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] border border-slate-200/60 dark:border-slate-800/80 relative pt-14"
               style={{
                 background: 'linear-gradient(160deg, rgba(255,255,255,0.85) 0%, rgba(245,247,250,0.95) 100%)',
                 backdropFilter: 'blur(30px)',
@@ -163,27 +185,17 @@ export default function AnimatedRobot() {
                 background: 'linear-gradient(160deg, rgba(15,23,42,0.92) 0%, rgba(8,12,24,0.98) 100%)',
               }} />
 
-              {/* Glowing neon top bar */}
-              <div className="h-[3px] w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
-
-              {/* Header */}
-              <div className="relative z-10 px-4 py-3.5 sm:px-6 sm:py-5 flex items-center justify-between border-b border-slate-100/80 dark:border-slate-800/60" style={{
-                background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(139,92,246,0.08) 100%)',
-              }}>
-                <div className="flex items-center gap-2.5 sm:gap-3">
-                  <div className="relative flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-2xl bg-indigo-500 dark:bg-indigo-600 shadow-[0_0_15px_rgba(99,102,241,0.3)]">
-                    <Bot size={16} className="text-white sm:w-5 sm:h-5" />
-                    {/* Status Indicator */}
-                    <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-slate-900 animate-pulse" />
-                  </div>
+              {/* Protruding Avatar Header */}
+              <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full border-[5px] border-indigo-500 bg-white dark:bg-[#121824] flex items-center justify-center shadow-lg z-20 transition-all duration-300">
+                <div className="w-20 h-20 rounded-full overflow-hidden bg-indigo-50 dark:bg-slate-850 flex items-center justify-center relative">
+                  <Bot size={44} className="text-indigo-500 dark:text-indigo-400" />
+                  <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-white dark:border-[#121824] animate-pulse" />
                 </div>
-                
-                <button
-                  onClick={toggleChat}
-                  className="w-7 h-7 sm:w-9 sm:h-9 rounded-2xl bg-slate-200/50 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 transition-all cursor-pointer border border-slate-200/30 dark:border-slate-700/30"
-                >
-                  <X size={14} className="sm:w-4 sm:h-4" />
-                </button>
+              </div>
+
+              {/* Header Info */}
+              <div className="px-6 pb-3 flex flex-col items-center border-b border-slate-100/80 dark:border-slate-800/60 relative z-10">
+                <h3 className="text-indigo-600 dark:text-indigo-400 font-black text-lg tracking-wider uppercase">Smurf AI</h3>
               </div>
 
               {/* Messages Area */}
@@ -200,14 +212,14 @@ export default function AnimatedRobot() {
                       {/* Message Bubble */}
                       <div className={`px-4 py-3 rounded-[20px] text-xs sm:text-[13px] leading-relaxed shadow-sm whitespace-pre-wrap transition-all ${
                         msg.role === 'user'
-                          ? 'bg-gradient-to-r from-indigo-500 to-indigo-605 text-white rounded-tr-sm shadow-[0_4px_12px_rgba(99,102,241,0.2)]'
-                          : 'bg-white/80 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 rounded-tl-sm border border-slate-200/50 dark:border-slate-800/50'
+                          ? 'bg-indigo-600 text-white rounded-tr-none shadow-[0_4px_12px_rgba(99,102,241,0.15)]'
+                          : 'bg-white/80 dark:bg-slate-900/60 text-slate-700 dark:text-slate-200 rounded-tl-none border border-slate-200/50 dark:border-slate-800/50'
                       }`}>
                         {msg.text}
                       </div>
                       
                       {/* Tiny Timestamp */}
-                      <span className="text-[8px] text-slate-400 dark:text-slate-600 self-end mb-1">
+                      <span className="text-[8px] text-slate-400 dark:text-slate-650 self-end mb-1">
                         {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
@@ -271,7 +283,7 @@ export default function AnimatedRobot() {
               )}
 
               {/* Input Area */}
-              <div className="relative z-10 px-4 py-3.5 sm:px-5 sm:py-4 border-t border-slate-100 dark:border-slate-800/60 bg-white/40 dark:bg-slate-950/40">
+              <div className="relative z-10 px-4 py-3.5 sm:px-5 sm:py-4 border-t border-slate-100 dark:border-slate-800/60 bg-white/40 dark:bg-slate-950/40 rounded-b-[32px]">
                 <div className="flex items-center gap-1.5 sm:gap-2 bg-white dark:bg-slate-900 rounded-[20px] px-3 py-2 border border-slate-200/80 dark:border-slate-800/80 focus-within:border-indigo-400 dark:focus-within:border-indigo-500 focus-within:shadow-[0_0_12px_rgba(99,102,241,0.12)] transition-all">
                   <input
                     ref={inputRef}
@@ -287,11 +299,11 @@ export default function AnimatedRobot() {
                     disabled={!inputValue.trim() || isTyping}
                     className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                       inputValue.trim() && !isTyping
-                        ? 'bg-gradient-to-r from-indigo-500 to-indigo-650 text-white shadow-md shadow-indigo-500/25 hover:brightness-105 active:scale-95'
+                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95'
                         : 'bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500'
                     }`}
                   >
-                    <Send size={12} className="sm:w-3.5 sm:h-3.5" />
+                    <Send size={12} className="sm:w-3.5 sm:h-3.5 fill-current" />
                   </button>
                 </div>
               </div>
@@ -301,6 +313,7 @@ export default function AnimatedRobot() {
 
         {/* Robot Button */}
         <motion.div
+          ref={buttonRef}
           layout
           className={`pointer-events-auto flex flex-col items-center cursor-pointer select-none flex-shrink-0 transition-all duration-500 ${
             isChatOpen ? botPositions[botPositionIndex] : 'relative'
@@ -353,19 +366,7 @@ export default function AnimatedRobot() {
               )}
             </AnimatePresence>
 
-            {/* Notification badge when chat is closed */}
-            <AnimatePresence>
-              {!isChatOpen && !isTyping && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  exit={{ scale: 0 }}
-                  className="absolute top-3 right-3 sm:top-5 sm:right-5 w-4 h-4 sm:w-5 sm:h-5 bg-indigo-500 rounded-full flex items-center justify-center z-10 shadow-lg shadow-indigo-500/30 border border-white dark:border-slate-900"
-                >
-                  <span className="text-white text-[8px] sm:text-[9px] font-black">AI</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+
 
             {/* Lottie Animation */}
             <div className="w-full h-full flex items-center justify-center bg-transparent">

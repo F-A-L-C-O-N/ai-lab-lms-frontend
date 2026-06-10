@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, BookOpen, CheckCircle2, XCircle, Trophy, ArrowRight, Check, Lock, Play, ArrowLeft, Flame, Target, Medal, Code, HelpCircle } from 'lucide-react';
+import { X, BookOpen, CheckCircle2, XCircle, Trophy, ArrowRight, Check, Lock, Play, ArrowLeft, Flame, Target, Medal, Code, HelpCircle, Users } from 'lucide-react';
 import { motion, animate } from 'framer-motion';
 import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
@@ -198,11 +198,122 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     }
   };
 
-  // Window width state for responsive roadmap layout
+  const renderStudyActionButtons = () => {
+    if (!activeStep) return null;
+    const isChallenge = activeStep.stepData.study.code ? true : false;
+    const hasPractice = isChallenge || (activeStep.stepData.quiz && activeStep.stepData.quiz.length > 0);
+
+    const practiceId = activeStep.id.replace('-topic', '-practice');
+    const isPracticeDone = completedSteps[courseName]?.includes(practiceId);
+
+    if (!hasPractice) {
+      return (
+        <button
+          onClick={handleCompleteStep}
+          className="w-full sm:w-auto bg-[#4CAF50] hover:bg-green-600 text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(56,142,60,1)] active:translate-y-[4px] active:shadow-none transition-all"
+        >
+          COMPLETE STUDY
+          <ArrowRight size={18} className="ml-1.5" />
+        </button>
+      );
+    }
+
+    if (isPracticeDone) {
+      return (
+        <>
+          <button
+            onClick={() => {
+              setViewMode('roadmap');
+              setActiveStep(null);
+            }}
+            className="w-full sm:w-auto bg-slate-200 hover:bg-slate-350 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 px-6 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center transition-all"
+          >
+            BACK TO ROADMAP
+          </button>
+          <button
+            onClick={() => {
+              const practiceMilestone = {
+                ...activeStep,
+                id: practiceId,
+                type: isChallenge ? 'challenge' : 'quiz',
+                title: isChallenge ? `Coding Challenge: ${activeStep.title}` : `${activeStep.title} Quiz`,
+                duration: isChallenge ? '30 min' : '10 min',
+              };
+              setActiveStep(practiceMilestone);
+              setLessonPhase('quiz');
+              if (isChallenge) {
+                setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+                setCompileOutput(null);
+                setIsChallengePassed(false);
+              } else {
+                setCurrentQuestionIdx(0);
+                setSelectedOption(null);
+                setIsAnswerChecked(false);
+                setScore(0);
+              }
+            }}
+            className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-6 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none transition-all"
+          >
+            PRACTICE AGAIN
+            <ArrowRight size={18} className="ml-1.5" />
+          </button>
+        </>
+      );
+    }
+
+    // Practice exists and is not completed yet
+    return (
+      <button
+        onClick={() => {
+          // Mark study as completed first
+          const completedList = completedSteps[courseName] || [];
+          if (!completedList.includes(activeStep.id)) {
+            const updated = {
+              ...completedSteps,
+              [courseName]: [...completedList, activeStep.id]
+            };
+            setCompletedSteps(updated);
+            localStorage.setItem('AI Lab Learning Portal_completed_steps', JSON.stringify(updated));
+          }
+
+          // Transition to practice
+          const practiceMilestone = {
+            ...activeStep,
+            id: practiceId,
+            type: isChallenge ? 'challenge' : 'quiz',
+            title: isChallenge ? `Coding Challenge: ${activeStep.title}` : `${activeStep.title} Quiz`,
+            duration: isChallenge ? '30 min' : '10 min',
+          };
+          setActiveStep(practiceMilestone);
+          setLessonPhase('quiz');
+          if (isChallenge) {
+            setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+            setCompileOutput(null);
+            setIsChallengePassed(false);
+          } else {
+            setCurrentQuestionIdx(0);
+            setSelectedOption(null);
+            setIsAnswerChecked(false);
+            setScore(0);
+          }
+        }}
+        className="w-full sm:w-auto bg-[#3B3B98] hover:bg-[#2e2e77] text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(46,46,119,1)] active:translate-y-[4px] active:shadow-none transition-all"
+      >
+        {isChallenge ? 'START CHALLENGE' : 'START QUIZ'}
+        <ArrowRight size={18} className="ml-1.5" />
+      </button>
+    );
+  };
+
+  // Window width and height states for responsive roadmap layout
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 800);
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      setWindowHeight(window.innerHeight);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -529,6 +640,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
   const isSmallScreen = windowWidth <= 750;
   const isTinyScreen = windowWidth < 480;
+  const screenScaleMultiplier = windowWidth >= 640 ? 1.0 : Math.max(0.55, windowWidth / 640);
 
   const getMilestoneCoords = (index, total) => {
     const Y = 100 + index * 180;
@@ -547,6 +659,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const [currentAnimatedIndex, setCurrentAnimatedIndex] = useState(0);
   const [carCoords, setCarCoords] = useState({ x: 300, y: 100, angle: 90 });
   const [isMoving, setIsMoving] = useState(false);
+  const isInitialPositioned = React.useRef(false);
 
   // Calculations
   const completedList = completedSteps[courseName] || [];
@@ -587,6 +700,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
   const revealedMilestones = milestones.filter((m, idx) => isMilestoneRevealed(idx));
   const H = 100 + (Math.max(1, milestones.length) - 1) * 180 + 100;
+  const isLastMilestoneRevealed = currentAnimatedIndex >= milestones.length - 1;
+  const minCurrentH = Math.max(100 + currentAnimatedIndex * 180 + 260, windowHeight - 200);
+  const currentH = isLastMilestoneRevealed
+    ? H
+    : Math.min(H, minCurrentH);
   const cloudStartUpdateY = 100 + currentAnimatedIndex * 180 + 90;
 
   // Construct a single continuous path connecting all milestones
@@ -672,7 +790,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     }
 
     // Position immediately if we are mounting or index is identical
-    if (currentAnimatedIndex === 0 && carCoords.x === 300 && carCoords.y === 100) {
+    if (!isInitialPositioned.current) {
+      isInitialPositioned.current = true;
       setCurrentAnimatedIndex(targetIdx);
       updateCoords(targetIdx);
       return;
@@ -687,7 +806,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
       if (end > start && Math.floor(start) < Math.floor(end)) {
         const gate = Math.floor(start) + 0.5;
-        
+
         setIsMoving(true);
         activeAnimation = animate(start, gate, {
           duration: 1.1,
@@ -776,7 +895,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const currentSegmentIdx = Math.floor(currentAnimatedIndex);
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8F9FC] dark:bg-slate-950 font-sans transition-colors duration-300">
+    <div className="min-h-screen flex flex-col bg-[#F8F9FC] dark:bg-slate-950 font-sans transition-colors duration-300 overflow-x-hidden">
 
       {/* 1. ROADMAP VIEW (DASHBOARD) */}
       <div className={viewMode === 'roadmap' ? 'flex flex-col flex-grow' : 'hidden'}>
@@ -800,7 +919,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
           </div>
 
           {/* Course Progress Section at Top */}
-          <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 mb-12 shadow-[0_4px_0_0_rgba(226,232,240,1)] dark:shadow-[0_4px_0_0_rgba(15,23,42,1)]">
+          <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 mb-8 shadow-[0_4px_0_0_rgba(226,232,240,1)] dark:shadow-[0_4px_0_0_rgba(15,23,42,1)]">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
 
               {/* Left: Progress Title & Bar */}
@@ -840,8 +959,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 </div>
               </div>
 
-              {/* Right: 4 Stats Cards */}
-              <div className="lg:col-span-7 grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {/* Right: 3 Stats Cards */}
+              <div className="lg:col-span-7 grid grid-cols-3 gap-3 sm:gap-4">
 
                 {/* Topics Card */}
                 <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
@@ -876,32 +995,25 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   </div>
                 </div>
 
-                {/* Streak Card */}
-                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-850 rounded-2xl p-4 flex flex-col justify-between h-[100px] shadow-sm">
-                  <span className="text-xs font-bold text-text-secondary dark:text-slate-400 flex items-center">
-                    <Flame size={14} className="text-[#FF6B6B] mr-1.5 fill-accent text-accent" /> Streak
-                  </span>
-                  <div>
-                    <span className="text-2xl font-black text-text-primary dark:text-slate-100">{getStreakCount()}</span>
-                    <span className="text-[10px] text-green-600 dark:text-green-400 font-black ml-1">DAYS</span>
-                  </div>
-                </div>
-
               </div>
             </div>
           </div>
+
+
 
           {/* Winding Road Journey Section */}
           <div className="flex justify-center items-center pt-12 pb-0 overflow-x-hidden md:overflow-x-visible">
             <div
               className="relative w-full max-w-[600px]"
-              style={{ height: `${H}px` }}
+              style={{ height: `${currentH}px` }}
             >
 
               {/* Curved SVG Road */}
               <svg
-                className="absolute inset-0 w-full h-full pointer-events-none z-10"
+                className="absolute inset-0 w-full pointer-events-none z-10"
+                style={{ height: `${currentH}px` }}
                 viewBox={`0 0 600 ${H}`}
+                preserveAspectRatio="xMidYMin slice"
                 fill="none"
                 xmlns="http://www.w3.org/2000/svg"
               >
@@ -914,7 +1026,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   className="pointer-events-none"
                 />
 
-                 {milestones.slice(0, -1).map((_, i) => {
+                {milestones.slice(0, -1).map((_, i) => {
                   const start = getMilestoneCoords(i, milestones.length);
                   const end = getMilestoneCoords(i + 1, milestones.length);
                   const pathD = `M ${start.X} ${start.Y} C ${start.X} ${start.Y + 90}, ${end.X} ${end.Y - 90}, ${end.X} ${end.Y}`;
@@ -930,7 +1042,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <path
                         d={pathD}
                         stroke={isUnlocked ? '#6C63FF' : '#E2E8F0'}
-                        strokeWidth={28}
+                        strokeWidth={28 * screenScaleMultiplier}
                         strokeLinecap="round"
                         fill="none"
                         className="transition-colors duration-500 dark:stroke-slate-800"
@@ -940,7 +1052,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                         <path
                           d={pathD}
                           stroke="#6C63FF"
-                          strokeWidth={36}
+                          strokeWidth={36 * screenScaleMultiplier}
                           strokeLinecap="round"
                           fill="none"
                           className="opacity-20 blur-sm transition-opacity duration-300"
@@ -950,8 +1062,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       <path
                         d={pathD}
                         stroke={isUnlocked ? '#FFFFFF' : '#94A3B8'}
-                        strokeWidth={2}
-                        strokeDasharray="6,6"
+                        strokeWidth={2 * screenScaleMultiplier}
+                        strokeDasharray={`${6 * screenScaleMultiplier},${6 * screenScaleMultiplier}`}
                         strokeLinecap="round"
                         fill="none"
                         className="transition-colors duration-500 opacity-70 dark:stroke-slate-650"
@@ -965,10 +1077,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
               {trailParticles.map(p => (
                 <div
                   key={p.id}
-                  className="absolute w-3.5 h-3.5 rounded-full bg-gradient-to-r from-[#FF6B6B] to-[#6C63FF] pointer-events-none transition-opacity duration-300 shadow-[0_0_8px_#FF6B6B] z-20"
+                  className="absolute rounded-full bg-gradient-to-r from-[#FF6B6B] to-[#6C63FF] pointer-events-none transition-opacity duration-300 shadow-[0_0_8px_#FF6B6B] z-20"
                   style={{
+                    width: `${Math.round(14 * screenScaleMultiplier)}px`,
+                    height: `${Math.round(14 * screenScaleMultiplier)}px`,
                     left: `${(p.x / 600) * 100}%`,
-                    top: `${(p.y / H) * 100}%`,
+                    top: `${(p.y / currentH) * 100}%`,
                     transform: 'translate(-50%, -50%) scale(0.8)',
                     opacity: p.opacity
                   }}
@@ -978,161 +1092,217 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
 
               {/* Full-Screen Cloud Overlay (Magical Fog of War) */}
-              {currentAnimatedIndex < milestones.length - 1 && (
-                <div
-                  className="absolute left-1/2 -translate-x-1/2 w-[220vw] pointer-events-none transition-all duration-300"
-                  style={{
-                    top: `${(cloudStartUpdateY / H) * 100}%`,
-                    height: `${H - cloudStartUpdateY + 300}px`, // extend past bottom of road to cover page bottom
-                    zIndex: 35
-                  }}
-                >
-                  {/* Embedded keyframe styles for smooth cloud movements */}
-                  <style>{`
-                    @keyframes floatCloudLeft {
-                      0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
-                      50% { transform: translate(-15px, -8px) scale(1.04) rotate(-2deg); }
-                    }
-                    @keyframes floatCloudRight {
-                      0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
-                      50% { transform: translate(15px, -10px) scale(1.03) rotate(2deg); }
-                    }
-                    @keyframes floatMist {
-                      0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
-                      50% { transform: translateY(-20px) translateX(15px) scale(1.15); }
-                    }
-                  `}</style>
+              {currentAnimatedIndex < milestones.length - 1 && (() => {
+                // Responsive cloud scale multiplier based on windowWidth
+                const getCloudScaleMultiplier = () => {
+                  if (windowWidth >= 1200) return 1.0;
+                  if (windowWidth >= 768) return 0.8;
+                  if (windowWidth >= 480) return 0.65;
+                  return 0.55;
+                };
+                const cloudScaleMultiplier = getCloudScaleMultiplier();
 
-                  <div className="relative w-full h-full overflow-hidden">
-                    {/* Background Soft Mist Layer */}
-                    <div
-                      className="absolute inset-x-0 top-0 h-[140px] bg-gradient-to-b from-transparent via-[#F0F9FF]/95 to-[#F0F9FF] dark:via-slate-950/95 dark:to-slate-950"
-                    />
-                    {/* Make the solid background color go all the way down */}
-                    <div
-                      className="absolute inset-x-0 top-[140px] bottom-0 bg-[#F0F9FF] dark:bg-slate-950"
-                    />
-
-                    {/* SVG Definitions for Premium Gradients */}
-                    <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
-                      <defs>
-                        <linearGradient id="whitePinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" className="text-white dark:text-[#1E293B]" stopColor="currentColor" />
-                          <stop offset="60%" className="text-[#F8FCFF] dark:text-[#0F172A]" stopColor="currentColor" />
-                          <stop offset="100%" className="text-[#E0F2FE] dark:text-slate-950" stopColor="currentColor" />
-                        </linearGradient>
-                        <linearGradient id="cottonCandyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                          <stop offset="0%" className="text-[#F0F9FF] dark:text-slate-800" stopColor="currentColor" />
-                          <stop offset="50%" className="text-[#E0F2FE] dark:text-[#1E293B]" stopColor="currentColor" />
-                          <stop offset="100%" className="text-[#BAE6FD] dark:text-[#0F172A]" stopColor="currentColor" />
-                        </linearGradient>
-                      </defs>
-                    </svg>
-
-                    {/* Floating Mist Particles */}
-                    {[...Array(25)].map((_, idx) => {
-                      const size = 30 + (idx * 8) % 50; // 30px to 80px (larger mist)
-                      const left = 5 + (idx * 9) % 90;
-                      const top = 30 + (idx * 37) % Math.max(300, H - cloudStartUpdateY + 150);
-                      const duration = 6 + (idx * 2) % 8;
-                      const delay = (idx * 0.8) % 4;
-                      return (
-                        <div
-                          key={`mist-part-${idx}`}
-                          className="absolute rounded-full bg-gradient-to-br from-white/50 to-[#E0F2FE]/60 dark:from-indigo-500/10 dark:to-purple-500/5 blur-[6px]"
-                          style={{
-                            width: `${size}px`,
-                            height: `${size}px`,
-                            left: `${left}%`,
-                            top: `${top}px`,
-                            animation: `floatMist ${duration}s infinite ease-in-out`,
-                            animationDelay: `${delay}s`,
-                            opacity: 0.75
-                          }}
-                        />
-                      );
-                    })}
-
-                    {/* Dense overlapping cloud rows filling the entire covered height */}
-                    {(() => {
-                      const rows = [];
-                      const startY = -40;
-                      // Stop exactly at the end of the road plus bottom padding
-                      const endY = H - cloudStartUpdateY + 260;
-                      // Place a row of clouds every 55px down the height for maximum overlap and no gaps
-                      for (let y = startY; y < endY; y += 55) {
-                        rows.push(y);
+                return (
+                  <div
+                    className="absolute left-1/2 -translate-x-1/2 w-[220vw] pointer-events-none"
+                    style={{
+                      top: `${(100 / currentH) * 100}%`,
+                      height: `${currentH - 100}px`,
+                      zIndex: 35
+                    }}
+                  >
+                    {/* Embedded keyframe styles for smooth cloud movements */}
+                    <style>{`
+                      @keyframes floatCloudLeft {
+                        0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+                        50% { transform: translate(-15px, -8px) scale(1.04) rotate(-2deg); }
                       }
+                      @keyframes floatCloudRight {
+                        0%, 100% { transform: translate(0px, 0px) scale(1) rotate(0deg); }
+                        50% { transform: translate(15px, -10px) scale(1.03) rotate(2deg); }
+                      }
+                      @keyframes floatMist {
+                        0%, 100% { transform: translateY(0px) translateX(0px) scale(1); }
+                        50% { transform: translateY(-20px) translateX(15px) scale(1.15); }
+                      }
+                    `}</style>
 
-                      return rows.map((yVal, rowIndex) => {
-                        // More clouds per row (7 clouds) to ensure full horizontal overlaps
-                        const cloudCount = rowIndex === 0 ? 8 : 7; 
-                        return (
-                          <div key={`cloud-row-${rowIndex}`} className="absolute w-full" style={{ top: `${yVal}px` }}>
-                            {[...Array(cloudCount)].map((_, colIndex) => {
-                              // Highly staggered offsets to lock into the gaps of the adjacent rows
-                              const offset = (rowIndex % 2 === 0) ? 0 : 7;
-                              const randomShift = ((colIndex + rowIndex) % 3) * 5 - 10;
-                              const leftPercent = (colIndex * 100) / (cloudCount - 1) - 12 + offset + randomShift;
-                              
-                              const isLeftFloat = (rowIndex + colIndex) % 2 === 0;
-                              const scale = 1.1 + ((colIndex + rowIndex) % 4) * 0.15; // Larger scale (1.1x to 1.7x)
-                              const duration = 7 + (colIndex * 1.5 + rowIndex) % 5;
-                              const animName = isLeftFloat ? 'floatCloudLeft' : 'floatCloudRight';
+                    <div className="relative w-full h-full overflow-hidden">
+                      {/* Background Soft Mist Layer */}
+                      <div
+                        className="absolute inset-x-0 h-[120px] bg-gradient-to-b from-transparent via-[#F0F9FF]/95 to-[#F0F9FF] dark:via-slate-950/95 dark:to-slate-950 transition-all duration-300"
+                        style={{
+                          top: `${Math.max(0, carCoords.y - 100 + 40)}px`
+                        }}
+                      />
+                      {/* Make the solid background color go all the way down */}
+                      <div
+                        className="absolute inset-x-0 bottom-0 bg-[#F0F9FF] dark:bg-slate-950 transition-all duration-300"
+                        style={{
+                          top: `${Math.max(0, carCoords.y - 100 + 40 + 120)}px`
+                        }}
+                      />
+                      {/* Bottom Fade Overlay to prevent sharp cuts */}
+                      <div
+                        className="absolute inset-x-0 bottom-0 h-[60px] bg-gradient-to-t from-[#F0F9FF] to-transparent dark:from-slate-950 pointer-events-none z-50"
+                      />
 
-                              return (
-                                <div
-                                  key={`cloud-item-${rowIndex}-${colIndex}`}
-                                  className="absolute"
-                                  style={{
-                                    left: `${leftPercent}%`,
-                                    transform: `scale(${scale})`,
-                                    animation: `${animName} ${duration}s infinite ease-in-out`,
-                                    opacity: 0.50
-                                  }}
-                                >
-                                  {/* Larger cloud width/height for seamless locking and zero space gaps */}
-                                  <svg width="360" height="210" viewBox="0 0 100 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_12px_26px_rgba(186,230,253,0.36)] dark:drop-shadow-[0_12px_26px_rgba(15,23,42,0.6)]">
-                                    <path
-                                      d="M 20 45 C 15 45, 10 40, 10 33 C 10 24, 18 20, 26 22 C 30 12, 50 12, 56 18 C 64 14, 76 18, 76 28 C 82 28, 88 34, 86 41 C 84 46, 78 48, 72 47 C 65 52, 35 52, 20 45 Z"
-                                      fill="url(#cottonCandyGrad)"
-                                    />
-                                    <path
-                                      d="M 24 40 C 20 40, 16 36, 17 32 C 18 25, 24 22, 30 24 C 34 16, 48 16, 52 22 C 58 19, 66 22, 67 29 C 72 29, 76 33, 75 38 C 70 42, 45 44, 24 40 Z"
-                                      fill="url(#whitePinkGrad)"
-                                      opacity="0.88"
-                                    />
-                                    {rowIndex === 0 && (
+                      {/* SVG Definitions for Premium Gradients */}
+                      <svg className="absolute w-0 h-0 pointer-events-none" aria-hidden="true">
+                        <defs>
+                          <linearGradient id="whitePinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" className="text-white dark:text-[#1E293B]" stopColor="currentColor" />
+                            <stop offset="60%" className="text-[#F8FCFF] dark:text-[#0F172A]" stopColor="currentColor" />
+                            <stop offset="100%" className="text-[#E0F2FE] dark:text-slate-950" stopColor="currentColor" />
+                          </linearGradient>
+                          <linearGradient id="cottonCandyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" className="text-[#F0F9FF] dark:text-slate-800" stopColor="currentColor" />
+                            <stop offset="50%" className="text-[#E0F2FE] dark:text-[#1E293B]" stopColor="currentColor" />
+                            <stop offset="100%" className="text-[#BAE6FD] dark:text-[#0F172A]" stopColor="currentColor" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+
+                      {/* Floating Mist Particles */}
+                      {(() => {
+                        return [...Array(25)].map((_, idx) => {
+                          const baseSize = 30 + (idx * 8) % 50; // 30px to 80px (larger mist)
+                          const size = baseSize * cloudScaleMultiplier;
+                          const left = 5 + (idx * 9) % 90;
+                          const top = 10 + (idx * 57) % Math.max(50, currentH - 100);
+                          const particleY = 100 + top;
+                          const distance = particleY - carCoords.y;
+                          let particleOpacity = 0.75;
+                          if (distance < 40) {
+                            particleOpacity = 0;
+                          } else if (distance < 160) {
+                            particleOpacity = 0.75 * ((distance - 40) / 120);
+                          }
+
+                          const duration = 6 + (idx * 2) % 8;
+                          const delay = (idx * 0.8) % 4;
+                          return (
+                            <div
+                              key={`mist-part-${idx}`}
+                              className="absolute rounded-full bg-gradient-to-br from-white/50 to-[#E0F2FE]/60 dark:from-indigo-500/10 dark:to-purple-500/5 blur-[6px] transition-opacity duration-200"
+                              style={{
+                                width: `${size}px`,
+                                height: `${size}px`,
+                                left: `${left}%`,
+                                top: `${top}px`,
+                                animation: `floatMist ${duration}s infinite ease-in-out`,
+                                animationDelay: `${delay}s`,
+                                opacity: particleOpacity
+                              }}
+                            />
+                          );
+                        });
+                      })()}
+
+                      {/* Dense overlapping cloud rows filling the entire covered height */}
+                      {(() => {
+                        const rows = [];
+                        const startY = 0;
+                        const cloudContainerHeight = currentH - 100;
+                        // Stop exactly at the end of the cloud overlay height plus buffer
+                        const endY = cloudContainerHeight + 100;
+                        // Place a row of clouds every 55px down the height for maximum overlap and no gaps
+                        for (let y = startY; y < endY; y += 55) {
+                          rows.push(y);
+                        }
+
+                        return rows.map((yVal, rowIndex) => {
+                          const rowY = 100 + yVal;
+                          const distance = rowY - carCoords.y;
+                          let rowOpacity = 0.50;
+                          if (distance < 40) {
+                            rowOpacity = 0;
+                          } else if (distance < 160) {
+                            rowOpacity = 0.50 * ((distance - 40) / 120);
+                          }
+
+                          // More clouds per row (7 clouds) to ensure full horizontal overlaps
+                          const cloudCount = rowIndex === 0 ? 8 : 7;
+                          return (
+                            <div
+                              key={`cloud-row-${rowIndex}`}
+                              className="absolute w-full transition-opacity duration-200"
+                              style={{
+                                top: `${yVal}px`,
+                                opacity: rowOpacity
+                              }}
+                            >
+                              {[...Array(cloudCount)].map((_, colIndex) => {
+                                // Highly staggered offsets to lock into the gaps of the adjacent rows
+                                const offset = (rowIndex % 2 === 0) ? 0 : 7;
+                                const randomShift = ((colIndex + rowIndex) % 3) * 5 - 10;
+                                const leftPercent = (colIndex * 100) / (cloudCount - 1) - 12 + offset + randomShift;
+
+                                const isLeftFloat = (rowIndex + colIndex) % 2 === 0;
+                                const baseScale = 1.1 + ((colIndex + rowIndex) % 4) * 0.15; // Larger scale (1.1x to 1.7x)
+                                const scale = baseScale * cloudScaleMultiplier;
+                                const duration = 7 + (colIndex * 1.5 + rowIndex) % 5;
+                                const animName = isLeftFloat ? 'floatCloudLeft' : 'floatCloudRight';
+
+                                return (
+                                  <div
+                                    key={`cloud-item-${rowIndex}-${colIndex}`}
+                                    className="absolute"
+                                    style={{
+                                      left: `${leftPercent}%`,
+                                      transform: `scale(${scale})`,
+                                      animation: `${animName} ${duration}s infinite ease-in-out`
+                                    }}
+                                  >
+                                    {/* Larger cloud width/height for seamless locking and zero space gaps */}
+                                    <svg width="360" height="210" viewBox="0 0 100 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-[0_12px_26px_rgba(186,230,253,0.36)] dark:drop-shadow-[0_12px_26px_rgba(15,23,42,0.6)]">
                                       <path
-                                        d="M 20 45 C 15 45, 10 40, 10 33 C 10 24, 18 20, 26 22 C 30 12, 50 12, 56 18 C 64 14, 76 18, 76 28"
-                                        className="stroke-white dark:stroke-slate-500"
-                                        strokeWidth="1.5"
-                                        strokeLinecap="round"
-                                        opacity="0.85"
+                                        d="M 20 45 C 15 45, 10 40, 10 33 C 10 24, 18 20, 26 22 C 30 12, 50 12, 56 18 C 64 14, 76 18, 76 28 C 82 28, 88 34, 86 41 C 84 46, 78 48, 72 47 C 65 52, 35 52, 20 45 Z"
+                                        fill="url(#cottonCandyGrad)"
                                       />
-                                    )}
-                                  </svg>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        );
-                      });
-                    })()}
+                                      <path
+                                        d="M 24 40 C 20 40, 16 36, 17 32 C 18 25, 24 22, 30 24 C 34 16, 48 16, 52 22 C 58 19, 66 22, 67 29 C 72 29, 76 33, 75 38 C 70 42, 45 44, 24 40 Z"
+                                        fill="url(#whitePinkGrad)"
+                                        opacity="0.88"
+                                      />
+                                      {rowIndex === 0 && (
+                                        <path
+                                          d="M 20 45 C 15 45, 10 40, 10 33 C 10 24, 18 20, 26 22 C 30 12, 50 12, 56 18 C 64 14, 76 18, 76 28"
+                                          className="stroke-white dark:stroke-slate-500"
+                                          strokeWidth="1.5"
+                                          strokeLinecap="round"
+                                          opacity="0.85"
+                                        />
+                                      )}
+                                    </svg>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Animated Progress Vehicle (Sports Car) */}
               <div
                 className="absolute z-40 pointer-events-none transition-transform duration-75"
                 style={{
                   left: `${(carCoords.x / 600) * 100}%`,
-                  top: `${(carCoords.y / H) * 100}%`,
+                  top: `${(carCoords.y / currentH) * 100}%`,
                   transform: `translate(-50%, -50%) rotate(${carCoords.angle}deg)`
                 }}
               >
-                <svg width="40" height="24" viewBox="0 0 40 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <svg
+                  width={Math.round(40 * screenScaleMultiplier)}
+                  height={Math.round(24 * screenScaleMultiplier)}
+                  viewBox="0 0 40 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
                   {/* Shadow */}
                   <rect x="2" y="5" width="36" height="15" rx="4" fill="black" opacity="0.25" />
                   {/* Body */}
@@ -1244,12 +1414,15 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     className="absolute -translate-x-1/2 -translate-y-1/2 z-30"
                     style={{
                       left: `${(coords.X / 600) * 100}%`,
-                      top: `${(coords.Y / H) * 100}%`
+                      top: `${(coords.Y / currentH) * 100}%`
                     }}
                   >
                     {/* Glow Ring for Current Step */}
                     {status === 'current' && (
-                      <div className="absolute -inset-3 rounded-full bg-[#6C63FF]/30 dark:bg-indigo-500/30 animate-pulse z-0" />
+                      <div
+                        className="absolute rounded-full bg-[#6C63FF]/30 dark:bg-indigo-500/30 animate-pulse z-0"
+                        style={{ inset: `${-12 * screenScaleMultiplier}px` }}
+                      />
                     )}
 
                     {/* Interactive Circle Node */}
@@ -1257,19 +1430,24 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       whileHover={isUnlocked ? { scale: 1.15 } : {}}
                       whileTap={isUnlocked ? { scale: 0.95 } : {}}
                       onClick={handleClick}
-                      className={`w-14 h-14 rounded-full flex items-center justify-center border-4 shadow-lg transition-all duration-300 z-10 relative ${status === 'completed'
-                        ? 'bg-[#4CAF50] border-white dark:border-slate-900 text-white shadow-[#4CAF50]/20'
-                        : status === 'current'
-                          ? 'bg-[#3B3B98] border-white dark:border-slate-900 text-white shadow-[#3B3B98]/30 ring-4 ring-[#6C63FF]/20'
-                          : 'bg-slate-200 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400 dark:text-slate-650 shadow-none cursor-not-allowed'
+                      className={`rounded-full flex items-center justify-center shadow-lg transition-all duration-300 z-10 relative ${isSmallScreen ? 'border-2' : 'border-4'
+                        } ${status === 'completed'
+                          ? 'bg-[#4CAF50] border-white dark:border-slate-900 text-white shadow-[#4CAF50]/20'
+                          : status === 'current'
+                            ? 'bg-[#3B3B98] border-white dark:border-slate-900 text-white shadow-[#3B3B98]/30 ring-4 ring-[#6C63FF]/20'
+                            : 'bg-slate-200 dark:bg-slate-800 border-white dark:border-slate-900 text-slate-400 dark:text-slate-650 shadow-none cursor-not-allowed'
                         }`}
+                      style={{
+                        width: `${Math.round(56 * screenScaleMultiplier)}px`,
+                        height: `${Math.round(56 * screenScaleMultiplier)}px`
+                      }}
                     >
                       {status === 'completed' ? (
-                        <Check size={24} className="stroke-[3.5]" />
+                        <Check size={Math.round(24 * screenScaleMultiplier)} className="stroke-[3.5]" />
                       ) : status === 'locked' ? (
-                        <Lock size={18} />
+                        <Lock size={Math.round(18 * screenScaleMultiplier)} />
                       ) : (
-                        <Icon size={20} className="stroke-[2.5]" />
+                        <Icon size={Math.round(20 * screenScaleMultiplier)} className="stroke-[2.5]" />
                       )}
                     </motion.button>
 
@@ -1277,12 +1455,9 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     <div
                       className="absolute transition-all duration-300 pointer-events-auto"
                       style={(() => {
-                        // Card width and offset based on screen size
-                        // The node circle is w-14 (56px). Parent is centered via -translate-x-1/2,
-                        // so the parent edge is ~28px from node center. Offset must be > 56px
-                        // to clear the full circle diameter + provide a visible gap.
-                        const cardWidth = isTinyScreen ? 105 : (isSmallScreen ? 125 : 220);
-                        const offset = isTinyScreen ? 58 : (isSmallScreen ? 62 : 75);
+                        // Card width and offset based on screen size scaled down proportionally
+                        const cardWidth = Math.round(220 * screenScaleMultiplier);
+                        const offset = Math.round(75 * screenScaleMultiplier);
 
                         const style = {
                           width: `${cardWidth}px`,
@@ -1305,13 +1480,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     >
                       <div
                         onClick={handleClick}
-                        className={`${isSmallScreen ? 'p-2.5 rounded-2xl' : 'p-4 rounded-3xl'} border-2 transition-all duration-300 cursor-pointer ${
-                          status === 'current'
+                        className={`${isSmallScreen ? 'p-2 rounded-xl' : 'p-4 rounded-3xl'} border-2 transition-all duration-300 cursor-pointer ${status === 'current'
                             ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)] hover:scale-[1.03] hover:shadow-[0_6px_16px_rgba(108,99,255,0.22)]'
                             : status === 'completed'
                               ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm hover:scale-[1.03]'
                               : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60 cursor-not-allowed'
-                        }`}
+                          }`}
                       >
                         {/* Card Header */}
                         <div className="flex items-center space-x-1 mb-1 justify-start">
@@ -1322,7 +1496,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                         </div>
 
                         {/* Title */}
-                        <h4 className={`${isTinyScreen ? 'text-[9px]' : (isSmallScreen ? 'text-[10px]' : 'text-sm')} font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-left`}>
+                        <h4 className={`${isTinyScreen ? 'text-[8.5px]' : (isSmallScreen ? 'text-[10px]' : 'text-sm')} font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-left`}>
                           {milestone.title}
                         </h4>
 
@@ -1362,10 +1536,10 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
       {/* 2. IMMERSIVE LESSON VIEW (FULL SCREEN) */}
       {viewMode === 'lesson' && activeStep && (
-        <div className="min-h-screen flex flex-col bg-white dark:bg-slate-900 transition-colors duration-300">
+        <div className="min-h-screen flex flex-col bg-[#F8F9FC] dark:bg-slate-950 transition-colors duration-300">
 
           {/* Immersive Top Bar */}
-          <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%]' : 'max-w-4xl'} w-full mx-auto px-4 md:px-6 pt-6 pb-4 flex items-center space-x-6`}>
+          <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%]' : 'max-w-5xl'} w-full mx-auto px-4 md:px-6 pt-6 pb-4 flex items-center space-x-6`}>
             <button
               onClick={() => setViewMode('roadmap')}
               className="text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -1393,163 +1567,96 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
           {/* Immersive Body Area */}
           <div className={`flex-grow flex ${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'items-start' : 'items-center'} justify-center p-4`}>
-            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%] py-2 md:py-3' : 'max-w-xl py-8 md:py-12'} w-full`}>
+            <div className={`${activeStep?.type === 'challenge' && lessonPhase === 'quiz' ? 'max-w-[96%] py-2 md:py-3' : 'max-w-5xl py-8 md:py-12'} w-full`}>
 
               {/* SUB-PHASE A: STUDY SLIDE */}
-              {lessonPhase === 'study' && (
-                <div className="space-y-6 animate-scale-up">
-                  <div className="flex items-center space-x-3 text-primary dark:text-indigo-400">
-                    <BookOpen size={28} />
-                    <span className="text-xs font-black uppercase tracking-widest">Core Concept Material</span>
-                  </div>
+              {lessonPhase === 'study' && (() => {
+                const hasRightSideContent = !!(activeStep.stepData.study.highlights || activeStep.stepData.study.code);
+                if (hasRightSideContent) {
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 animate-scale-up items-start">
+                      {/* Left Column: Heading and Main Content */}
+                      <div className="lg:col-span-7 space-y-6">
+                        <div className="flex items-center space-x-3 text-primary dark:text-indigo-400">
+                          <BookOpen size={28} />
+                          <span className="text-xs font-black uppercase tracking-widest">Core Concept Material</span>
+                        </div>
 
-                  <h2 className="text-3xl font-black text-text-primary dark:text-slate-100 tracking-tight leading-tight">
-                    {activeStep.stepData.study.heading}
-                  </h2>
+                        <h2 className="text-3xl lg:text-4xl font-black text-text-primary dark:text-slate-100 tracking-tight leading-tight">
+                          {activeStep.stepData.study.heading}
+                        </h2>
 
-                  <p className="text-lg text-text-secondary dark:text-slate-400 font-semibold leading-relaxed">
-                    {activeStep.stepData.study.content}
-                  </p>
+                        <p className="text-lg text-text-secondary dark:text-slate-400 font-semibold leading-relaxed">
+                          {activeStep.stepData.study.content}
+                        </p>
 
-                  {activeStep.stepData.study.highlights && (
-                    <div className="bg-indigo-50/30 dark:bg-indigo-955/10 border border-indigo-100/40 dark:border-indigo-900/30 rounded-2xl p-5">
-                      <p className="font-bold text-sm text-primary dark:text-indigo-450 mb-3 uppercase tracking-wider">
-                        Key Takeaways:
+                        <div className="pt-8 hidden lg:flex gap-4 justify-start">
+                          {renderStudyActionButtons()}
+                        </div>
+                      </div>
+
+                      {/* Right Column: Key Takeaways & Code Blocks */}
+                      <div className="lg:col-span-5 space-y-6">
+                        {activeStep.stepData.study.highlights && (
+                          <div className="bg-indigo-50/30 dark:bg-indigo-950/10 border border-indigo-100/40 dark:border-indigo-900/30 rounded-2xl p-5 shadow-sm">
+                            <p className="font-bold text-sm text-primary dark:text-indigo-450 mb-3 uppercase tracking-wider">
+                              Key Takeaways:
+                            </p>
+                            <ul className="space-y-2.5">
+                              {activeStep.stepData.study.highlights.map((h, hIdx) => (
+                                <li key={hIdx} className="flex items-start text-sm font-bold text-text-primary dark:text-slate-300">
+                                  <span className="bg-indigo-100 dark:bg-indigo-950 p-0.5 rounded-full text-primary dark:text-indigo-400 mr-2.5 mt-0.5">
+                                    <Check size={12} className="stroke-[3]" />
+                                  </span>
+                                  {h}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {activeStep.stepData.study.code && (
+                          <div className="bg-[#0F172A] rounded-2xl p-5 overflow-x-auto border border-slate-800 shadow-md">
+                            <pre className="font-mono text-xs text-slate-300">
+                              <code>{activeStep.stepData.study.code}</code>
+                            </pre>
+                          </div>
+                        )}
+
+                        <div className="pt-4 flex lg:hidden gap-4 justify-end">
+                          {renderStudyActionButtons()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="max-w-3xl mx-auto space-y-6 animate-scale-up">
+                      <div className="flex items-center space-x-3 text-primary dark:text-indigo-400">
+                        <BookOpen size={28} />
+                        <span className="text-xs font-black uppercase tracking-widest">Core Concept Material</span>
+                      </div>
+
+                      <h2 className="text-3xl lg:text-4xl font-black text-text-primary dark:text-slate-100 tracking-tight leading-tight">
+                        {activeStep.stepData.study.heading}
+                      </h2>
+
+                      <p className="text-lg text-text-secondary dark:text-slate-400 font-semibold leading-relaxed">
+                        {activeStep.stepData.study.content}
                       </p>
-                      <ul className="space-y-2.5">
-                        {activeStep.stepData.study.highlights.map((h, hIdx) => (
-                          <li key={hIdx} className="flex items-start text-sm font-bold text-text-primary dark:text-slate-300">
-                            <span className="bg-indigo-100 dark:bg-indigo-950 p-0.5 rounded-full text-primary dark:text-indigo-400 mr-2.5 mt-0.5">
-                              <Check size={12} className="stroke-[3]" />
-                            </span>
-                            {h}
-                          </li>
-                        ))}
-                      </ul>
+
+                      <div className="pt-8 flex gap-4 justify-end">
+                        {renderStudyActionButtons()}
+                      </div>
                     </div>
-                  )}
+                  );
+                }
+              })()}
 
-                  {activeStep.stepData.study.code && (
-                    <div className="bg-[#0F172A] rounded-2xl p-5 overflow-x-auto border border-slate-800">
-                      <pre className="font-mono text-xs text-slate-300">
-                        <code>{activeStep.stepData.study.code}</code>
-                      </pre>
-                    </div>
-                  )}
-
-                  <div className="pt-8 flex gap-4 justify-end">
-                    {(() => {
-                      const isChallenge = activeStep.stepData.study.code ? true : false;
-                      const hasPractice = isChallenge || (activeStep.stepData.quiz && activeStep.stepData.quiz.length > 0);
-                      
-                      const practiceId = activeStep.id.replace('-topic', '-practice');
-                      const isPracticeDone = completedSteps[courseName]?.includes(practiceId);
-
-                      if (!hasPractice) {
-                        return (
-                          <button
-                            onClick={handleCompleteStep}
-                            className="w-full sm:w-auto bg-[#4CAF50] hover:bg-green-600 text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(56,142,60,1)] active:translate-y-[4px] active:shadow-none transition-all"
-                          >
-                            COMPLETE STUDY
-                            <ArrowRight size={18} className="ml-1.5" />
-                          </button>
-                        );
-                      }
-
-                      if (isPracticeDone) {
-                        return (
-                          <>
-                            <button
-                              onClick={() => {
-                                setViewMode('roadmap');
-                                setActiveStep(null);
-                              }}
-                              className="w-full sm:w-auto bg-slate-200 hover:bg-slate-350 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 px-6 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center transition-all"
-                            >
-                              BACK TO ROADMAP
-                            </button>
-                            <button
-                              onClick={() => {
-                                const practiceMilestone = {
-                                  ...activeStep,
-                                  id: practiceId,
-                                  type: isChallenge ? 'challenge' : 'quiz',
-                                  title: isChallenge ? `Coding Challenge: ${activeStep.title}` : `${activeStep.title} Quiz`,
-                                  duration: isChallenge ? '30 min' : '10 min',
-                                };
-                                setActiveStep(practiceMilestone);
-                                setLessonPhase('quiz');
-                                if (isChallenge) {
-                                  setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
-                                  setCompileOutput(null);
-                                  setIsChallengePassed(false);
-                                } else {
-                                  setCurrentQuestionIdx(0);
-                                  setSelectedOption(null);
-                                  setIsAnswerChecked(false);
-                                  setScore(0);
-                                }
-                              }}
-                              className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-6 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none transition-all"
-                            >
-                              PRACTICE AGAIN
-                              <ArrowRight size={18} className="ml-1.5" />
-                            </button>
-                          </>
-                        );
-                      }
-
-                      // Practice exists and is not completed yet
-                      return (
-                        <button
-                          onClick={() => {
-                            // Mark study as completed first
-                            const completedList = completedSteps[courseName] || [];
-                            if (!completedList.includes(activeStep.id)) {
-                              const updated = {
-                                ...completedSteps,
-                                [courseName]: [...completedList, activeStep.id]
-                              };
-                              setCompletedSteps(updated);
-                              localStorage.setItem('AI Lab Learning Portal_completed_steps', JSON.stringify(updated));
-                            }
-
-                            // Transition to practice
-                            const practiceMilestone = {
-                              ...activeStep,
-                              id: practiceId,
-                              type: isChallenge ? 'challenge' : 'quiz',
-                              title: isChallenge ? `Coding Challenge: ${activeStep.title}` : `${activeStep.title} Quiz`,
-                              duration: isChallenge ? '30 min' : '10 min',
-                            };
-                            setActiveStep(practiceMilestone);
-                            setLessonPhase('quiz');
-                            if (isChallenge) {
-                              setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
-                              setCompileOutput(null);
-                              setIsChallengePassed(false);
-                            } else {
-                              setCurrentQuestionIdx(0);
-                              setSelectedOption(null);
-                              setIsAnswerChecked(false);
-                              setScore(0);
-                            }
-                          }}
-                          className="w-full sm:w-auto bg-[#3B3B98] hover:bg-[#2e2e77] text-white px-10 py-4.5 rounded-2xl font-bold text-base flex items-center justify-center shadow-[0_4px_0_0_rgba(46,46,119,1)] active:translate-y-[4px] active:shadow-none transition-all"
-                        >
-                          {isChallenge ? 'START CHALLENGE' : 'START QUIZ'}
-                          <ArrowRight size={18} className="ml-1.5" />
-                        </button>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
               {/* SUB-PHASE B: ACTIVE PRACTICE QUIZ */}
               {lessonPhase === 'quiz' && (
                 activeStep.type === 'challenge' ? (
-                  <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[600px] animate-scale-up bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-5 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+                  <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-8 min-h-[600px] animate-scale-up bg-white dark:bg-slate-955 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-5 md:p-6 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
                     {/* Left Column: Challenge Description & Test Cases */}
                     <div className="lg:col-span-4 flex flex-col justify-between space-y-6">
                       <div className="space-y-5">
@@ -1622,7 +1729,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             >
                               {isCompiling ? (
                                 <>
-                                  <svg className="animate-spin mr-1 h-2.5 w-2.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                                  <svg className="animate-spin mr-1 h-2.5 w-2.5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" /></svg>
                                   COMPILING...
                                 </>
                               ) : (
@@ -1639,7 +1746,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                               className={`px-3 py-1 rounded-lg font-bold text-[10px] flex items-center justify-center transition-all active:scale-95 ${isChallengePassed
                                 ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/10'
                                 : 'bg-slate-800/50 text-slate-500 border border-slate-800/80 cursor-not-allowed'
-                              }`}
+                                }`}
                             >
                               FINISH CHALLENGE
                               <ArrowRight size={10} className="ml-1" />
@@ -1720,126 +1827,132 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full bg-white dark:bg-slate-950 border border-slate-200/80 dark:border-slate-800/80 rounded-3xl p-6 md:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.05)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.35)] space-y-6 animate-scale-up">
-                    <div className="flex items-center justify-between">
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 rounded-full text-xs font-bold w-fit">
-                        <HelpCircle size={14} className="stroke-[2.5]" />
-                        <span>PRACTICE QUIZ</span>
-                      </div>
-                      <span className="text-xs font-black text-slate-400 dark:text-slate-500 font-mono">
-                        Question {currentQuestionIdx + 1} of {activeStep.stepData.quiz.length}
-                      </span>
-                    </div>
-
-                    <h2 className="text-xl md:text-2xl font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight">
-                      {activeStep.stepData.quiz[currentQuestionIdx].question}
-                    </h2>
-
-                    {/* Multi-choice items */}
-                    <div className="space-y-3.5 pt-2">
-                      {activeStep.stepData.quiz[currentQuestionIdx].options.map((option, idx) => {
-                        const isSelected = selectedOption === idx;
-                        const isCorrect = activeStep.stepData.quiz[currentQuestionIdx].answerIndex === idx;
-
-                        const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D...
-
-                        let optionStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:border-primary/50 dark:hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900/70 text-text-primary dark:text-slate-300';
-                        let badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
-
-                        if (isSelected && !isAnswerChecked) {
-                          optionStyle = 'border-primary dark:border-indigo-400 bg-indigo-50/15 dark:bg-indigo-950/20 text-primary dark:text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.08)]';
-                          badgeStyle = 'bg-primary dark:bg-indigo-500 text-white';
-                        } else if (isAnswerChecked) {
-                          if (isCorrect) {
-                            optionStyle = 'border-green-500 dark:border-green-500/80 bg-green-50/15 dark:bg-green-950/20 text-green-600 dark:text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.08)]';
-                            badgeStyle = 'bg-green-500 text-white';
-                          } else if (isSelected && !isCorrect) {
-                            optionStyle = 'border-red-500 dark:border-red-500/80 bg-red-50/15 dark:bg-red-950/20 text-red-655 dark:text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.08)]';
-                            badgeStyle = 'bg-red-500 text-white';
-                          } else {
-                            optionStyle = 'border-slate-150 dark:border-slate-900/60 bg-slate-50/10 dark:bg-slate-900/10 text-slate-450 dark:text-slate-500 opacity-60';
-                            badgeStyle = 'bg-slate-100/50 dark:bg-slate-900/50 text-slate-350 dark:text-slate-650';
-                          }
-                        }
-
-                        return (
-                          <button
-                            key={idx}
-                            onClick={() => handleOptionSelect(idx)}
-                            disabled={isAnswerChecked}
-                            className={`w-full text-left p-4.5 rounded-2xl border-2 font-bold text-base flex items-center justify-between transition-all duration-200 group active:scale-[0.995] ${optionStyle}`}
-                          >
-                            <div className="flex items-center gap-3.5">
-                              <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black tracking-wider transition-colors font-mono ${badgeStyle}`}>
-                                {optionLetter}
-                              </span>
-                              <span className="leading-snug">{option}</span>
-                            </div>
-                            {isAnswerChecked && isCorrect && (
-                              <div className="bg-green-500 text-white p-1 rounded-full shadow-lg animate-scale-up">
-                                <Check size={14} className="stroke-[3]" />
-                              </div>
-                            )}
-                            {isAnswerChecked && isSelected && !isCorrect && (
-                              <div className="bg-red-500 text-white p-1 rounded-full shadow-lg animate-scale-up">
-                                <X size={14} className="stroke-[3]" />
-                              </div>
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Answer Explanation */}
-                    {isAnswerChecked && (
-                      <div className={`p-5 rounded-2xl border-2 animate-scale-up relative overflow-hidden ${selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
-                        ? 'bg-green-50/45 dark:bg-green-950/10 border-green-200/50 dark:border-green-900/20 text-green-800 dark:text-green-300'
-                        : 'bg-red-50/45 dark:bg-red-950/10 border-red-200/50 dark:border-red-900/20 text-red-800 dark:text-red-300'
-                        }`}>
-                        <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
-                          {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? (
-                            <CheckCircle2 size={72} />
-                          ) : (
-                            <XCircle size={72} />
-                          )}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 animate-scale-up items-start w-full">
+                    {/* Left Column: Question Details */}
+                    <div className="lg:col-span-5 space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-cyan-50 dark:bg-cyan-955/20 text-cyan-650 dark:text-cyan-400 rounded-full text-xs font-bold w-fit">
+                          <HelpCircle size={14} className="stroke-[2.5]" />
+                          <span>PRACTICE QUIZ</span>
                         </div>
-                        <p className="font-black text-sm mb-1 uppercase tracking-wider flex items-center gap-1.5">
-                          {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? '🎉 Correct Answer!' : '💡 Incorrect Answer'}
-                        </p>
-                        <p className="text-xs font-semibold leading-relaxed opacity-90">
-                          {activeStep.stepData.quiz[currentQuestionIdx].explanation}
-                        </p>
                       </div>
-                    )}
 
-                    {/* Action Controls */}
-                    <div className="pt-4 flex justify-end">
-                      {!isAnswerChecked ? (
-                        <button
-                          onClick={handleCheckAnswer}
-                          disabled={selectedOption === null}
-                          className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-bold text-base transition-all duration-200 shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none hover:-translate-y-[1px] ${selectedOption !== null
-                            ? 'bg-primary text-white hover:bg-indigo-700 shadow-[0_4px_0_0_rgba(67,56,202,0.3)]'
-                            : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600'
-                            }`}
-                        >
-                          CHECK ANSWER
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handleNextQuestion}
-                          className="w-full sm:w-auto bg-primary hover:bg-indigo-700 text-white px-10 py-4 rounded-2xl font-bold text-base flex items-center justify-center transition-all duration-200 shadow-[0_4px_0_0_rgba(67,56,202,0.3)] hover:-translate-y-[1px] active:translate-y-[4px] active:shadow-none"
-                        >
-                          {currentQuestionIdx + 1 === activeStep.stepData.quiz.length ? 'FINISH' : 'NEXT'}
-                          <ArrowRight size={18} className="ml-1.5" />
-                        </button>
+                      <div className="space-y-4">
+                        <span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest font-mono">
+                          Question {currentQuestionIdx + 1} of {activeStep.stepData.quiz.length}
+                        </span>
+                        <h2 className="text-2xl lg:text-3xl font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight">
+                          {activeStep.stepData.quiz[currentQuestionIdx].question}
+                        </h2>
+                      </div>
+
+                      {/* Answer Explanation */}
+                      {isAnswerChecked && (
+                        <div className={`p-5 rounded-2xl border-2 animate-scale-up relative overflow-hidden ${selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex
+                          ? 'bg-green-50/45 dark:bg-green-950/10 border-green-200/50 dark:border-green-900/20 text-green-800 dark:text-green-300'
+                          : 'bg-red-50/45 dark:bg-red-950/10 border-red-200/50 dark:border-red-900/20 text-red-800 dark:text-red-300'
+                          }`}>
+                          <div className="absolute -right-4 -bottom-4 opacity-10 pointer-events-none">
+                            {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? (
+                              <CheckCircle2 size={72} />
+                            ) : (
+                              <XCircle size={72} />
+                            )}
+                          </div>
+                          <p className="font-black text-sm mb-1 uppercase tracking-wider flex items-center gap-1.5">
+                            {selectedOption === activeStep.stepData.quiz[currentQuestionIdx].answerIndex ? '🎉 Correct Answer!' : '💡 Incorrect Answer'}
+                          </p>
+                          <p className="text-xs font-semibold leading-relaxed opacity-90">
+                            {activeStep.stepData.quiz[currentQuestionIdx].explanation}
+                          </p>
+                        </div>
                       )}
+                    </div>
+
+                    {/* Right Column: Choices & Controls */}
+                    <div className="lg:col-span-7 space-y-6">
+                      {/* Multi-choice items */}
+                      <div className="space-y-3.5">
+                        {activeStep.stepData.quiz[currentQuestionIdx].options.map((option, idx) => {
+                          const isSelected = selectedOption === idx;
+                          const isCorrect = activeStep.stepData.quiz[currentQuestionIdx].answerIndex === idx;
+
+                          const optionLetter = String.fromCharCode(65 + idx); // A, B, C, D...
+
+                          let optionStyle = 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:border-primary/50 dark:hover:border-indigo-500/50 hover:bg-slate-50 dark:hover:bg-slate-900/70 text-text-primary dark:text-slate-300';
+                          let badgeStyle = 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400';
+
+                          if (isSelected && !isAnswerChecked) {
+                            optionStyle = 'border-primary dark:border-indigo-400 bg-indigo-50/15 dark:bg-indigo-950/20 text-primary dark:text-indigo-300 shadow-[0_0_15px_rgba(99,102,241,0.08)]';
+                            badgeStyle = 'bg-primary dark:bg-indigo-500 text-white';
+                          } else if (isAnswerChecked) {
+                            if (isCorrect) {
+                              optionStyle = 'border-green-500 dark:border-green-500/80 bg-green-50/15 dark:bg-green-950/20 text-green-600 dark:text-green-400 shadow-[0_0_15px_rgba(34,197,94,0.08)]';
+                              badgeStyle = 'bg-green-500 text-white';
+                            } else if (isSelected && !isCorrect) {
+                              optionStyle = 'border-red-500 dark:border-red-500/80 bg-red-50/15 dark:bg-red-950/20 text-red-655 dark:text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.08)]';
+                              badgeStyle = 'bg-red-500 text-white';
+                            } else {
+                              optionStyle = 'border-slate-150 dark:border-slate-900/60 bg-slate-50/10 dark:bg-slate-900/10 text-slate-450 dark:text-slate-500 opacity-60';
+                              badgeStyle = 'bg-slate-100/50 dark:bg-slate-900/50 text-slate-350 dark:text-slate-650';
+                            }
+                          }
+
+                          return (
+                            <button
+                              key={idx}
+                              onClick={() => handleOptionSelect(idx)}
+                              disabled={isAnswerChecked}
+                              className={`w-full text-left p-4.5 rounded-2xl border-2 font-bold text-base flex items-center justify-between transition-all duration-200 group active:scale-[0.995] ${optionStyle}`}
+                            >
+                              <div className="flex items-center gap-3.5">
+                                <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black tracking-wider transition-colors font-mono ${badgeStyle}`}>
+                                  {optionLetter}
+                                </span>
+                                <span className="leading-snug">{option}</span>
+                              </div>
+                              {isAnswerChecked && isCorrect && (
+                                <div className="bg-green-500 text-white p-1 rounded-full shadow-lg animate-scale-up">
+                                  <Check size={14} className="stroke-[3]" />
+                                </div>
+                              )}
+                              {isAnswerChecked && isSelected && !isCorrect && (
+                                <div className="bg-red-500 text-white p-1 rounded-full shadow-lg animate-scale-up">
+                                  <X size={14} className="stroke-[3]" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Action Controls */}
+                      <div className="pt-4 flex justify-end">
+                        {!isAnswerChecked ? (
+                          <button
+                            onClick={handleCheckAnswer}
+                            disabled={selectedOption === null}
+                            className={`w-full sm:w-auto px-10 py-4 rounded-2xl font-bold text-base transition-all duration-200 shadow-[0_4px_0_0_rgba(67,56,202,1)] active:translate-y-[4px] active:shadow-none hover:-translate-y-[1px] ${selectedOption !== null
+                              ? 'bg-primary text-white hover:bg-indigo-700 shadow-[0_4px_0_0_rgba(67,56,202,0.3)]'
+                              : 'bg-slate-100 text-slate-400 shadow-none border border-slate-200 cursor-not-allowed dark:bg-slate-900 dark:border-slate-800 dark:text-slate-600'
+                              }`}
+                          >
+                            CHECK ANSWER
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleNextQuestion}
+                            className="w-full sm:w-auto bg-[#4CAF50] hover:bg-green-600 text-white px-10 py-4 rounded-2xl font-bold text-base flex items-center justify-center transition-all duration-200 shadow-[0_4px_0_0_rgba(56,142,60,1)] hover:-translate-y-[1px] active:translate-y-[4px] active:shadow-none"
+                          >
+                            {currentQuestionIdx + 1 === activeStep.stepData.quiz.length ? 'COMPLETE QUIZ' : 'NEXT QUESTION'}
+                            <ArrowRight size={18} className="ml-1.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
               )}
-
-
 
             </div>
           </div>
