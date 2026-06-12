@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { ArrowUp } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import LearningPaths from '../components/LearningPaths/LearningPaths';
-import PopularTracks from '../components/PopularTracks/PopularTracks';
 import Footer from '../components/Footer/Footer';
 
 const Home = ({ onNavigate, isAuthenticated, onLogout, userName }) => {
@@ -31,7 +30,6 @@ const Home = ({ onNavigate, isAuthenticated, onLogout, userName }) => {
       
       <main className="flex-grow pt-24 pb-12">
         <LearningPaths onCardClick={handleCardClick} userName={userName} />
-        <PopularTracks onCardClick={handleCardClick} />
       </main>
 
       <Footer />
