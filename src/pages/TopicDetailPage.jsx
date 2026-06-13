@@ -4,9 +4,8 @@ import {
   Play, ArrowRight, CheckCircle2, XCircle, RefreshCw, Star,
   Terminal, Sparkles, FileText, ChevronRight, Video
 } from 'lucide-react';
-import { roadmapData } from '../data/roadmapData';
 import PythonEditor from '../components/PythonEditor';
-import { runCode } from '../api/api';
+import { runCode, fetchCourses } from '../api/api';
 const getEmbedUrl = (url) => {
   if (!url) return '';
   let videoId = '';
@@ -25,9 +24,51 @@ const getEmbedUrl = (url) => {
   return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
 };
 
+const POLL_INTERVAL = 30000; // 30 seconds
+
 const TopicDetailPage = ({ courseName, topicId, onBack, onNavigate }) => {
   const decodedCourseName = courseName;
-  const courseSteps = roadmapData[decodedCourseName] || [];
+
+  // Live course data from API (falls back to static roadmapData)
+  const [apiCourseSteps, setApiCourseSteps] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
+
+  // Fetch courses from backend on mount + poll every POLL_INTERVAL
+  useEffect(() => {
+    let isMounted = true;
+    let timerId = null;
+
+    const loadCourses = async () => {
+      try {
+        const courses = await fetchCourses();
+        if (!isMounted) return;
+        // The API returns a flat list of topic objects.
+        // Filter by courseName to get topics for this course.
+        const filtered = courses.filter(
+          (c) => c.courseName === decodedCourseName
+        );
+        setApiCourseSteps(filtered);
+        setFetchError(null);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Failed to fetch courses:', err);
+        setFetchError(err.message);
+        // Keep existing data (either previous API data or static fallback)
+      }
+    };
+
+    loadCourses();
+    timerId = setInterval(loadCourses, POLL_INTERVAL);
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearInterval(timerId);
+    };
+  }, [decodedCourseName]);
+
+  // Use API data
+  const courseSteps = apiCourseSteps || [];
+
   const topic = courseSteps.find(step => String(step.id) === String(topicId));
 
   // Subtopics list
@@ -101,14 +142,7 @@ const TopicDetailPage = ({ courseName, topicId, onBack, onNavigate }) => {
   const startHeight = useRef(300);
 
   // Sandbox State (if no coding challenge exists)
-  const defaultSandboxCode = `# Python Sandbox
-# Try writing some Python code here related to ${topic?.title || 'this topic'}!
-
-def greet(name):
-    return f"Hello, {name}! Let's learn programming."
-
-print(greet("Student"))
-`;
+  const defaultSandboxCode = `print("Hello World")`;
   const [sandboxCode, setSandboxCode] = useState(defaultSandboxCode);
   const [isSandboxCompiling, setIsSandboxCompiling] = useState(false);
   const [sandboxOutput, setSandboxOutput] = useState(null);
@@ -143,26 +177,6 @@ print(greet("Student"))
     }
   }, [topicId, topic]);
 
-  if (!topic) {
-    return (
-      <div className="min-h-screen bg-background dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center transition-colors duration-300">
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-border dark:border-slate-800 shadow-xl max-w-md w-full">
-          <XCircle className="text-red-500 mx-auto mb-4" size={64} />
-          <h2 className="text-2xl font-black text-text-primary dark:text-slate-100 mb-2">Topic Not Found</h2>
-          <p className="text-text-secondary dark:text-slate-400 mb-6 font-medium">
-            We couldn't find the topic you're looking for. It may have been moved or renamed.
-          </p>
-          <button
-            onClick={onBack}
-            className="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl transition-all shadow-lg hover:shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <ArrowLeft size={18} />
-            Go back to Roadmap
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Flatten all selectable items (subtopics and sub-subtopics) to easily find active content
   const allContentItems = [];
@@ -301,6 +315,32 @@ print(greet("Student"))
       window.removeEventListener('touchend', handleDragEnd);
     };
   }, [isDragging]);
+
+  // Show "not found" only after all hooks have run (React rules of hooks)
+  if (!topic) {
+    return (
+      <div className="min-h-screen bg-background dark:bg-slate-950 flex flex-col items-center justify-center p-6 text-center transition-colors duration-300">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-border dark:border-slate-800 shadow-xl max-w-md w-full">
+          <XCircle className="text-red-500 mx-auto mb-4" size={64} />
+          <h2 className="text-2xl font-black text-text-primary dark:text-slate-100 mb-2">Topic Not Found</h2>
+          <p className="text-text-secondary dark:text-slate-400 mb-6 font-medium">
+            {apiCourseSteps === null
+              ? 'Loading topic data from the server...'
+              : "We couldn't find the topic you're looking for. It may have been moved or renamed."}
+          </p>
+          {apiCourseSteps !== null && (
+            <button
+              onClick={onBack}
+              className="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-2xl transition-all shadow-lg hover:shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <ArrowLeft size={18} />
+              Go back to Roadmap
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Coding Challenge execution
   const handleCompileRun = async () => {

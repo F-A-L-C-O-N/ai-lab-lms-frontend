@@ -4,7 +4,7 @@
  */
 
 const COMPILATION_SERVER_URL =
-  "https://curdle-imposing-skirmish.ngrok-free.dev";
+  "http://0.0.0.0:5000";
 
 /**
  * Execute Python code on the remote server.
@@ -94,6 +94,37 @@ export async function pingServer() {
     return response.ok;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Fetch all courses from the backend database.
+ *
+ * @returns {Promise<Array>} Array of course/topic objects from MongoDB
+ */
+export async function fetchCourses() {
+  try {
+    const response = await fetch('/api/get/courses', {
+      headers: {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch courses (${response.status})`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    if (
+      error instanceof TypeError &&
+      error.message.toLowerCase().includes('fetch')
+    ) {
+      throw new Error('Unable to connect to the course server.');
+    }
+    throw error;
   }
 }
 

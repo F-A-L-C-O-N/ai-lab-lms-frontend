@@ -3,9 +3,8 @@ import { X, BookOpen, CheckCircle2, XCircle, Trophy, ArrowRight, Check, Lock, Pl
 import { motion, animate } from 'framer-motion';
 import Navbar from '../components/Navbar/Navbar';
 import Footer from '../components/Footer/Footer';
-import { roadmapData } from '../data/roadmapData';
 import PythonEditor from '../components/PythonEditor';
-import { runCode } from '../api/api';
+import { runCode, fetchCourses } from '../api/api';
 
 const transpilePythonToJS = (pyCode) => {
   let code = pyCode;
@@ -178,8 +177,38 @@ const transpilePythonToJS = (pyCode) => {
   return polyfills + '\n' + resultLines.join('\n');
 };
 
+const POLL_INTERVAL = 30000;
+
 const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout }) => {
-  const steps = roadmapData[courseName] || [];
+  // Live course data from API
+  const [apiSteps, setApiSteps] = useState(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    let timerId = null;
+
+    const loadCourses = async () => {
+      try {
+        const courses = await fetchCourses();
+        if (!isMounted) return;
+        const filtered = courses.filter(c => c.courseName === courseName);
+        setApiSteps(filtered);
+      } catch (err) {
+        if (!isMounted) return;
+        console.error('Failed to fetch courses:', err);
+      }
+    };
+
+    loadCourses();
+    timerId = setInterval(loadCourses, POLL_INTERVAL);
+
+    return () => {
+      isMounted = false;
+      if (timerId) clearInterval(timerId);
+    };
+  }, [courseName]);
+
+  const steps = apiSteps || [];
 
   // Local Storage Progress Persistence
   const [completedSteps, setCompletedSteps] = useState(() => {
@@ -702,12 +731,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   // Custom Top Stats Bar Calculations
   const completedTopics = steps.filter(step => completedList.includes(`step-${step.id}-topic`)).length;
   const completedQuizzes = steps.filter(step => {
-    const isChallenge = step.study.code ? true : false;
-    return !isChallenge && completedList.includes(`step-${step.id}-practice`);
+    const hasQuiz = step.quiz && step.quiz.length > 0;
+    return hasQuiz && completedList.includes(`step-${step.id}-quiz`);
   }).length;
   const completedChallenges = steps.filter(step => {
-    const isChallenge = step.study.code ? true : false;
-    return isChallenge && completedList.includes(`step-${step.id}-practice`);
+    const hasChallenge = !!step.codingChallenge;
+    return hasChallenge && completedList.includes(`step-${step.id}-challenge`);
   }).length;
 
   const isMilestoneRevealed = (index) => {
@@ -793,8 +822,9 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
     // Helper to update car coordinates
     const updateCoords = (val) => {
-      if (!pathElement || milestoneDistances.length === 0) return;
+      if (!pathElement || milestoneDistances.length === 0 || milestones.length === 0) return;
       const pathLength = pathElement.getTotalLength();
+      if (!pathLength || !isFinite(pathLength)) return;
 
       const segmentIdx = Math.floor(val);
       const t = val - segmentIdx;
@@ -807,6 +837,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
         const endDist = milestoneDistances[segmentIdx + 1];
         distance = startDist + t * (endDist - startDist);
       }
+
+      if (!isFinite(distance)) return;
 
       const pt = pathElement.getPointAtLength(distance);
       const ptAhead = pathElement.getPointAtLength(Math.min(pathLength, distance + 1));
@@ -1019,7 +1051,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   </span>
                   <div>
                     <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedQuizzes}</span>
-                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => !s.study.code).length}</span>
+                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => s.quiz && s.quiz.length > 0).length}</span>
                   </div>
                 </div>
 
@@ -1030,7 +1062,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   </span>
                   <div>
                     <span className="text-2xl font-black text-text-primary dark:text-slate-100">{completedChallenges}</span>
-                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => s.study.code).length}</span>
+                    <span className="text-[10px] text-text-secondary dark:text-slate-400 font-bold ml-1">/{steps.filter(s => !!s.codingChallenge).length}</span>
                   </div>
                 </div>
 

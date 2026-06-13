@@ -1,11 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lock, Flame, Check } from 'lucide-react';
-import { roadmapData } from '../../data/roadmapData';
-import { getLearningPaths } from '../../data/topics';
+import { fetchCourses } from '../../api/api';
 
-const paths = getLearningPaths();
+// Color palette for dynamically generated course cards
+const CARD_COLORS = [
+  'bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400',
+  'bg-purple-100 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400',
+  'bg-green-100 dark:bg-green-950/40 text-green-600 dark:text-green-400',
+  'bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400',
+  'bg-cyan-100 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400',
+  'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+  'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-600 dark:text-yellow-400',
+  'bg-pink-100 dark:bg-pink-950/40 text-pink-600 dark:text-pink-400',
+  'bg-indigo-100 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400',
+];
 
 const LearningPaths = ({ onCardClick, userName }) => {
+  const [courseMap, setCourseMap] = useState({});
+
+  // Fetch courses from API
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCourses = async () => {
+      try {
+        const courses = await fetchCourses();
+        if (!isMounted) return;
+        // Group by courseName
+        const map = {};
+        courses.forEach(c => {
+          if (!map[c.courseName]) map[c.courseName] = [];
+          map[c.courseName].push(c);
+        });
+        setCourseMap(map);
+      } catch (err) {
+        console.error('Failed to fetch courses:', err);
+      }
+    };
+
+    loadCourses();
+    const timerId = setInterval(loadCourses, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(timerId);
+    };
+  }, []);
+
+  // Build learning paths from the API data
+  const paths = Object.keys(courseMap).map((name, idx) => ({
+    id: idx + 1,
+    name,
+    color: CARD_COLORS[idx % CARD_COLORS.length],
+    locked: false,
+  }));
+
   // Load and verify streak info dynamically
   const getStreakInfo = () => {
     const saved = localStorage.getItem('AI_Lab_Streak_Info');
@@ -54,7 +102,7 @@ const LearningPaths = ({ onCardClick, userName }) => {
   const weeklyProgress = getWeeklyProgress(streakInfo.history);
 
   const getProgress = (name) => {
-    const steps = roadmapData[name] || [];
+    const steps = courseMap[name] || [];
     if (steps.length === 0) return 0;
     const completedSteps = JSON.parse(localStorage.getItem('AI Lab Learning Portal_completed_steps') || '{}');
     const completedList = completedSteps[name] || [];
@@ -148,6 +196,11 @@ const LearningPaths = ({ onCardClick, userName }) => {
 
         {/* Path cards grid - 3 columns on large screens */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {dynamicPaths.length === 0 && (
+            <div className="col-span-full text-center py-16 text-text-secondary dark:text-slate-400 text-sm font-semibold italic">
+              Loading courses from database...
+            </div>
+          )}
           {dynamicPaths.map((path) => (
             <div 
               key={path.id} 

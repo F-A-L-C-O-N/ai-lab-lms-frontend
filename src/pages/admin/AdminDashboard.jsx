@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Trash, Edit3, BookOpen, ArrowLeft, Layers, Trophy, Users, BarChart2, Search, Shield, Flame, CheckCircle2, ShieldAlert, Upload } from 'lucide-react';
 import Navbar from '../../components/Navbar/Navbar';
 import Footer from '../../components/Footer/Footer';
-import { roadmapData } from '../../data/roadmapData';
+import { fetchCourses } from '../../api/api';
 
 export default function AdminDashboard({ onNavigate, isAuthenticated, onLogout }) {
   const [courses, setCourses] = useState([]);
@@ -18,24 +18,33 @@ export default function AdminDashboard({ onNavigate, isAuthenticated, onLogout }
   const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
-    // 1. Initialize Courses & Topics
-    const savedCourses = localStorage.getItem('AI_Lab_Admin_Courses');
-    const savedTopics = localStorage.getItem('AI_Lab_Admin_Topics');
+    // 1. Initialize Courses & Topics from API
+    const loadFromApi = async () => {
+      try {
+        const allCourses = await fetchCourses();
+        const map = {};
+        allCourses.forEach(c => {
+          if (!map[c.courseName]) map[c.courseName] = [];
+          map[c.courseName].push(c);
+        });
+        const courseList = Object.keys(map);
+        setCourses(courseList);
+        setTopics(map);
+        localStorage.setItem('AI_Lab_Admin_Courses', JSON.stringify(courseList));
+        localStorage.setItem('AI_Lab_Admin_Topics', JSON.stringify(map));
+      } catch (err) {
+        console.error('Failed to fetch courses for admin:', err);
+        // Fallback to localStorage cache
+        const savedCourses = localStorage.getItem('AI_Lab_Admin_Courses');
+        const savedTopics = localStorage.getItem('AI_Lab_Admin_Topics');
+        if (savedCourses && savedTopics) {
+          setCourses(JSON.parse(savedCourses));
+          setTopics(JSON.parse(savedTopics));
+        }
+      }
+    };
 
-    if (savedCourses && savedTopics) {
-      setCourses(JSON.parse(savedCourses));
-      setTopics(JSON.parse(savedTopics));
-    } else {
-      const courseList = Object.keys(roadmapData);
-      const topicsMap = {};
-      courseList.forEach(c => {
-        topicsMap[c] = roadmapData[c] || [];
-      });
-      setCourses(courseList);
-      setTopics(topicsMap);
-      localStorage.setItem('AI_Lab_Admin_Courses', JSON.stringify(courseList));
-      localStorage.setItem('AI_Lab_Admin_Topics', JSON.stringify(topicsMap));
-    }
+    loadFromApi();
 
     // 2. Initialize Users Registry
     const savedUsers = localStorage.getItem('AI_Lab_Admin_Users_List');
