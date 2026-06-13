@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react';
 import Home from './pages/Home';
 import Landing from './pages/Landing';
 import RoadmapPage from './pages/RoadmapPage';
+import TopicDetailPage from './pages/TopicDetailPage';
 import Login from './pages/Login';
 import SignUp from './pages/SignUp';
 import AnimatedRobot from './components/AnimatedRobot';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import CourseManager from './pages/admin/CourseManager';
+import TopicManager from './pages/admin/TopicManager';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -16,9 +20,40 @@ function App() {
   });
 
   const [view, setView] = useState(() => {
+    const hash = window.location.hash;
+    if (hash === '#admin') return { page: 'admin', courseName: null };
+    if (hash === '#admin-course') return { page: 'admin-course', courseName: null };
+    if (hash.startsWith('#admin-topic/')) {
+      const decodedCourse = decodeURIComponent(hash.substring('#admin-topic/'.length));
+      return { page: 'admin-topic', courseName: decodedCourse };
+    }
     const auth = localStorage.getItem('isAuthenticated') === 'true';
     return { page: auth ? 'home' : 'landing', courseName: null };
   });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#admin') {
+        setView({ page: 'admin', courseName: null });
+      } else if (hash === '#admin-course') {
+        setView({ page: 'admin-course', courseName: null });
+      } else if (hash.startsWith('#admin-topic/')) {
+        const decodedCourse = decodeURIComponent(hash.substring('#admin-topic/'.length));
+        setView({ page: 'admin-topic', courseName: decodedCourse });
+      } else if (hash === '') {
+        const auth = localStorage.getItem('isAuthenticated') === 'true';
+        setView(prev => {
+          if (prev.page.startsWith('admin')) {
+            return { page: auth ? 'home' : 'landing', courseName: null };
+          }
+          return prev;
+        });
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -53,12 +88,21 @@ function App() {
     }
   }, [isAuthenticated]);
 
-  const handleNavigate = (page, courseName = null) => {
+  const handleNavigate = (page, courseName = null, topicId = null) => {
     const auth = localStorage.getItem('isAuthenticated') === 'true';
     if (!auth && page !== 'login' && page !== 'signup' && page !== 'landing') {
-      setView({ page: 'login', courseName: null });
+      setView({ page: 'login', courseName: null, topicId: null });
     } else {
-      setView({ page, courseName });
+      if (page === 'admin') {
+        window.location.hash = 'admin';
+      } else if (page === 'admin-course') {
+        window.location.hash = 'admin-course';
+      } else if (page === 'admin-topic') {
+        window.location.hash = `admin-topic/${encodeURIComponent(courseName)}`;
+      } else {
+        window.location.hash = '';
+      }
+      setView({ page, courseName, topicId });
     }
     window.scrollTo(0, 0);
   };
@@ -114,6 +158,17 @@ function App() {
             onLogout={handleLogout}
           />
         );
+      case 'topic-detail':
+        return (
+          <TopicDetailPage
+            courseName={view.courseName}
+            topicId={view.topicId}
+            onBack={() => handleNavigate('roadmap', view.courseName)}
+            isAuthenticated={isAuthenticated}
+            onNavigate={handleNavigate}
+            onLogout={handleLogout}
+          />
+        );
       case 'login':
         return (
           <Login
@@ -128,6 +183,31 @@ function App() {
             onAuthSuccess={handleLoginSuccess}
           />
         );
+      case 'admin':
+        return (
+          <AdminDashboard
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+            onLogout={handleLogout}
+          />
+        );
+      case 'admin-course':
+        return (
+          <CourseManager
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+            onLogout={handleLogout}
+          />
+        );
+      case 'admin-topic':
+        return (
+          <TopicManager
+            courseName={view.courseName}
+            onNavigate={handleNavigate}
+            isAuthenticated={isAuthenticated}
+            onLogout={handleLogout}
+          />
+        );
       default:
         return (
           <Landing
@@ -139,7 +219,7 @@ function App() {
     }
   };
 
-  const showRobot = view.page !== 'landing' && view.page !== 'login' && view.page !== 'signup';
+  const showRobot = view.page !== 'landing' && view.page !== 'login' && view.page !== 'signup' && !view.page.startsWith('admin');
 
   return (
     <>

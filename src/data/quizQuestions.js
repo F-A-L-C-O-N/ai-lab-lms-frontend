@@ -288,6 +288,33 @@ export const quizData = {
       },
     ],
   },
+
+  'Python Programming': {
+    1: [
+      {
+        question: 'Which of the following is correct about Python variables?',
+        options: [
+          'Variables must be declared with their type before use',
+          'Variables are dynamically typed and do not need declaration',
+          'Variables are only allowed to store numeric values',
+          'Variables cannot change their types after initialization',
+        ],
+        answerIndex: 1,
+        explanation: 'Python variables are dynamically typed. They are created automatically upon assignment and can change types dynamically.',
+      },
+      {
+        question: 'What is the correct syntax to output "Hello" in Python?',
+        options: [
+          'echo("Hello")',
+          'print("Hello")',
+          'printf("Hello")',
+          'System.out.println("Hello")',
+        ],
+        answerIndex: 1,
+        explanation: 'In Python, the print() function is used to write messages or variables to the console.',
+      },
+    ],
+  },
 };
 
 // ─── Accessor Functions ──────────────────────────────────────────────────────

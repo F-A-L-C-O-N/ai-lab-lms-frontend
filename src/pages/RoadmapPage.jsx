@@ -242,7 +242,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
               setActiveStep(practiceMilestone);
               setLessonPhase('quiz');
               if (isChallenge) {
-                setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+                setCurrentChallengeIdx(0);
+                const list = Array.isArray(practiceMilestone.stepData?.codingChallenges)
+                  ? practiceMilestone.stepData.codingChallenges
+                  : (practiceMilestone.stepData?.codingChallenge ? [practiceMilestone.stepData.codingChallenge] : []);
+                setUserCode(list[0]?.initialCode || '');
                 setCompileOutput(null);
                 setIsChallengePassed(false);
               } else {
@@ -287,7 +291,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
           setActiveStep(practiceMilestone);
           setLessonPhase('quiz');
           if (isChallenge) {
-            setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+            setCurrentChallengeIdx(0);
+            const list = Array.isArray(practiceMilestone.stepData?.codingChallenges)
+              ? practiceMilestone.stepData.codingChallenges
+              : (practiceMilestone.stepData?.codingChallenge ? [practiceMilestone.stepData.codingChallenge] : []);
+            setUserCode(list[0]?.initialCode || '');
             setCompileOutput(null);
             setIsChallengePassed(false);
           } else {
@@ -334,12 +342,23 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const [score, setScore] = useState(0);
 
   // Coding challenge states
+  const [currentChallengeIdx, setCurrentChallengeIdx] = useState(0);
   const [userCode, setUserCode] = useState('');
   const [compileOutput, setCompileOutput] = useState(null);
   const [isChallengePassed, setIsChallengePassed] = useState(false);
   const [isCompiling, setIsCompiling] = useState(false);
-
-
+  const getChallengesList = () => {
+    if (!activeStep?.stepData) return [];
+    if (Array.isArray(activeStep.stepData.codingChallenges)) {
+      return activeStep.stepData.codingChallenges;
+    }
+    if (activeStep.stepData.codingChallenge) {
+      return [activeStep.stepData.codingChallenge];
+    }
+    return [];
+  };
+  const challenges = getChallengesList();
+  const currentChallenge = challenges[currentChallengeIdx] || null;
 
   // Draggable divider between editor and console
   const [editorHeight, setEditorHeight] = useState(420);
@@ -427,7 +446,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
     setLessonPhase('quiz');
     setViewMode('lesson');
     if (isChallenge) {
-      setUserCode(practiceMilestone.stepData.codingChallenge?.initialCode || '');
+      setCurrentChallengeIdx(0);
+      const list = Array.isArray(practiceMilestone.stepData?.codingChallenges)
+        ? practiceMilestone.stepData.codingChallenges
+        : (practiceMilestone.stepData?.codingChallenge ? [practiceMilestone.stepData.codingChallenge] : []);
+      setUserCode(list[0]?.initialCode || '');
       setCompileOutput(null);
       setIsChallengePassed(false);
     } else {
@@ -441,7 +464,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   const handleStartPractice = () => {
     if (activeStep.type === 'challenge') {
       setLessonPhase('quiz');
-      setUserCode(activeStep.stepData.codingChallenge?.initialCode || '');
+      setCurrentChallengeIdx(0);
+      const list = Array.isArray(activeStep.stepData?.codingChallenges)
+        ? activeStep.stepData.codingChallenges
+        : (activeStep.stepData?.codingChallenge ? [activeStep.stepData.codingChallenge] : []);
+      setUserCode(list[0]?.initialCode || '');
       setCompileOutput(null);
       setIsChallengePassed(false);
     } else if (!activeStep.stepData.quiz || activeStep.stepData.quiz.length === 0) {
@@ -452,7 +479,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   };
 
   const handleCompileRun = async () => {
-    const challenge = activeStep.stepData.codingChallenge;
+    const challenge = currentChallenge;
     if (!challenge) return;
 
     setIsCompiling(true);
@@ -656,10 +683,16 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
   // Path reference state for dynamic SVG path measurements
   const [pathElement, setPathElement] = useState(null);
   const [milestoneDistances, setMilestoneDistances] = useState([]);
-  const [currentAnimatedIndex, setCurrentAnimatedIndex] = useState(0);
+  const [currentAnimatedIndex, setCurrentAnimatedIndex] = useState(() => {
+    const justCompletedIdx = localStorage.getItem('AI_Lab_Just_Completed_Topic_Index');
+    if (justCompletedIdx !== null) {
+      return Number(justCompletedIdx);
+    }
+    return 0;
+  });
   const [carCoords, setCarCoords] = useState({ x: 300, y: 100, angle: 90 });
   const [isMoving, setIsMoving] = useState(false);
-  const isInitialPositioned = React.useRef(false);
+  const isInitialPositioned = React.useRef(localStorage.getItem('AI_Lab_Just_Completed_Topic_Index') !== null);
 
   // Calculations
   const completedList = completedSteps[courseName] || [];
@@ -783,8 +816,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
 
     // First initialization
     if (!pathElement) {
-      setCurrentAnimatedIndex(targetIdx);
-      const coords = getMilestoneCoords(targetIdx, milestones.length);
+      const startIdx = localStorage.getItem('AI_Lab_Just_Completed_Topic_Index') !== null 
+        ? Number(localStorage.getItem('AI_Lab_Just_Completed_Topic_Index'))
+        : targetIdx;
+      setCurrentAnimatedIndex(startIdx);
+      const coords = getMilestoneCoords(startIdx, milestones.length);
       setCarCoords({ x: coords.X, y: coords.Y, angle: 90 });
       return;
     }
@@ -826,6 +862,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                 },
                 onComplete: () => {
                   setIsMoving(false);
+                  localStorage.removeItem('AI_Lab_Just_Completed_Topic_Index');
                 }
               });
             }, 1000);
@@ -842,6 +879,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
           },
           onComplete: () => {
             setIsMoving(false);
+            localStorage.removeItem('AI_Lab_Just_Completed_Topic_Index');
           }
         });
       }
@@ -852,6 +890,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
       };
     } else {
       updateCoords(targetIdx);
+      localStorage.removeItem('AI_Lab_Just_Completed_Topic_Index');
     }
   }, [completedList.join(','), pathElement, milestones.length, milestoneDistances]);
 
@@ -901,7 +940,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
       <div className={viewMode === 'roadmap' ? 'flex flex-col flex-grow' : 'hidden'}>
         <Navbar onNavigate={onNavigate} isAuthenticated={isAuthenticated} onLogout={onLogout} />
 
-        <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+        <main className="flex-grow max-w-full w-full mx-auto px-6 sm:px-8 lg:px-12 pt-24 pb-12">
 
           {/* Back Navigation Bar */}
           <div className="mb-8 flex items-center justify-between">
@@ -1361,21 +1400,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                   if (status === 'locked') return;
 
                   if (milestone.type === 'topic') {
-                    const isStudyDone = completedList.includes(milestone.id);
-                    if (!isStudyDone) {
-                      handleStartLesson(milestone);
-                    } else {
-                      const isChallenge = milestone.stepData.study.code ? true : false;
-                      const hasPractice = isChallenge || (milestone.stepData.quiz && milestone.stepData.quiz.length > 0);
-                      const practiceId = milestone.id.replace('-topic', '-practice');
-                      const isPracticeDone = completedList.includes(practiceId);
-                      if (hasPractice && !isPracticeDone) {
-                        handleStartPracticeForMilestone(milestone);
-                      } else {
-                        // Both done, default to review study
-                        handleStartLesson(milestone);
-                      }
-                    }
+                    onNavigate('topic-detail', courseName, milestone.stepId);
                   } else if (milestone.type === 'assessment') {
                     const allQuestions = [];
                     steps.forEach(s => {
@@ -1456,8 +1481,8 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                       className="absolute transition-all duration-300 pointer-events-auto"
                       style={(() => {
                         // Card width and offset based on screen size scaled down proportionally
-                        const cardWidth = Math.round(220 * screenScaleMultiplier);
-                        const offset = Math.round(75 * screenScaleMultiplier);
+                        const cardWidth = Math.round(180 * screenScaleMultiplier);
+                        const offset = Math.round(65 * screenScaleMultiplier);
 
                         const style = {
                           width: `${cardWidth}px`,
@@ -1480,11 +1505,11 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                     >
                       <div
                         onClick={handleClick}
-                        className={`${isSmallScreen ? 'p-2 rounded-xl' : 'p-4 rounded-3xl'} border-2 transition-all duration-300 cursor-pointer ${status === 'current'
-                            ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)] hover:scale-[1.03] hover:shadow-[0_6px_16px_rgba(108,99,255,0.22)]'
-                            : status === 'completed'
-                              ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm hover:scale-[1.03]'
-                              : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60 cursor-not-allowed'
+                        className={`${isSmallScreen ? 'p-2 rounded-xl' : 'p-3.5 rounded-2xl'} border-2 transition-all duration-300 cursor-pointer ${status === 'current'
+                          ? 'bg-white dark:bg-slate-900 border-[#6C63FF] dark:border-indigo-500 shadow-[0_4px_12px_rgba(108,99,255,0.15)] hover:scale-[1.03] hover:shadow-[0_6px_16px_rgba(108,99,255,0.22)]'
+                          : status === 'completed'
+                            ? 'bg-white dark:bg-slate-900 border-[#4CAF50] dark:border-green-800/80 shadow-sm hover:scale-[1.03]'
+                            : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-100 dark:border-slate-850 opacity-60 cursor-not-allowed'
                           }`}
                       >
                         {/* Card Header */}
@@ -1496,12 +1521,12 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                         </div>
 
                         {/* Title */}
-                        <h4 className={`${isTinyScreen ? 'text-[8.5px]' : (isSmallScreen ? 'text-[10px]' : 'text-sm')} font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-left`}>
+                        <h4 className={`${isTinyScreen ? 'text-[8.5px]' : (isSmallScreen ? 'text-[10px]' : 'text-xs')} font-black text-text-primary dark:text-slate-100 leading-snug tracking-tight text-left`}>
                           {milestone.title}
                         </h4>
 
                         {/* Footer details */}
-                        <div className={`flex ${isSmallScreen ? 'flex-col gap-0.5' : 'items-center justify-between'} ${isSmallScreen ? 'mt-1.5 pt-1' : 'mt-3 pt-2'} border-t border-slate-100 dark:border-slate-800 ${isSmallScreen ? 'text-[7px]' : 'text-[9px]'} font-bold text-text-secondary dark:text-slate-450`}>
+                        <div className={`flex ${isSmallScreen ? 'flex-col gap-0.5' : 'items-center justify-between'} ${isSmallScreen ? 'mt-1.5 pt-1' : 'mt-2 pt-1.5'} border-t border-slate-100 dark:border-slate-800 ${isSmallScreen ? 'text-[7px]' : 'text-[9px]'} font-bold text-text-secondary dark:text-slate-450`}>
                           <span className="flex items-center">
                             {(() => {
                               if (milestone.type !== 'topic') return milestone.duration;
@@ -1665,13 +1690,13 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           <span>CODING CHALLENGE</span>
                         </div>
                         <h2 className="text-2xl font-black text-text-primary dark:text-slate-100 leading-tight tracking-tight">
-                          {activeStep.title}
+                          {activeStep.title} {challenges.length > 1 && `(${currentChallengeIdx + 1} of ${challenges.length})`}
                         </h2>
 
                         <div className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 dark:from-indigo-500/10 dark:to-purple-500/10 border border-indigo-100/50 dark:border-indigo-900/35 rounded-2xl p-5 relative overflow-hidden">
                           <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-full blur-xl pointer-events-none" />
                           <p className="text-sm font-semibold text-text-secondary dark:text-slate-350 leading-relaxed relative z-10">
-                            {activeStep.stepData.codingChallenge.description}
+                            {currentChallenge?.description}
                           </p>
                         </div>
                       </div>
@@ -1683,7 +1708,7 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                           Expected Behavior
                         </h3>
                         <div className="space-y-2.5">
-                          {activeStep.stepData.codingChallenge.testCases.map((tc, idx) => (
+                          {currentChallenge?.testCases?.map((tc, idx) => (
                             <div key={idx} className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/40 rounded-2xl p-4 text-xs font-semibold hover:border-slate-300/60 dark:hover:border-slate-700/60 transition-colors">
                               <div className="flex justify-between items-center mb-1.5">
                                 <span className="text-text-secondary dark:text-slate-500">Test Input:</span>
@@ -1741,14 +1766,24 @@ const RoadmapPage = ({ courseName, onBack, onNavigate, isAuthenticated, onLogout
                             </button>
 
                             <button
-                              onClick={handleCompleteStep}
+                              onClick={() => {
+                                if (currentChallengeIdx + 1 < challenges.length) {
+                                  const nextIdx = currentChallengeIdx + 1;
+                                  setCurrentChallengeIdx(nextIdx);
+                                  setUserCode(challenges[nextIdx]?.initialCode || '');
+                                  setCompileOutput(null);
+                                  setIsChallengePassed(false);
+                                } else {
+                                  handleCompleteStep();
+                                }
+                              }}
                               disabled={!isChallengePassed}
                               className={`px-3 py-1 rounded-lg font-bold text-[10px] flex items-center justify-center transition-all active:scale-95 ${isChallengePassed
                                 ? 'bg-gradient-to-r from-emerald-500 to-green-600 hover:from-green-600 hover:to-emerald-500 text-white shadow-md shadow-emerald-500/10'
                                 : 'bg-slate-800/50 text-slate-500 border border-slate-800/80 cursor-not-allowed'
                                 }`}
                             >
-                              FINISH CHALLENGE
+                              {currentChallengeIdx + 1 < challenges.length ? 'NEXT CHALLENGE' : 'FINISH CHALLENGE'}
                               <ArrowRight size={10} className="ml-1" />
                             </button>
                           </div>

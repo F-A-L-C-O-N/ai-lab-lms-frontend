@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, X, Moon, Sun, User, ChevronDown, KeyRound, Eye, EyeOff, Lock, Check, Mail, Flame, Trophy, BookOpen } from 'lucide-react';
+import { Menu, X, Moon, Sun, User, ChevronDown, KeyRound, Eye, EyeOff, Lock, Check, Mail, Flame, Trophy, BookOpen, Award, Zap, Brain, Sparkles, Star } from 'lucide-react';
 import logo from '../../assets/logo.png';
 
 const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
@@ -25,11 +25,38 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
 
     const savedStreak = localStorage.getItem('AI_Lab_Streak_Info');
     const streakInfo = savedStreak ? JSON.parse(savedStreak) : { count: 0, bestStreak: 0 };
+    const streakCount = streakInfo.count || 0;
+    const bestStreak = streakInfo.bestStreak || 0;
+
+    // Gamification calculations
+    const xp = totalCompleted * 120 + streakCount * 50;
+    const xpPerLevel = 500;
+    const level = Math.floor(xp / xpPerLevel) + 1;
+    const currentXp = xp % xpPerLevel;
+    
+    let levelTitle = "AI Novice";
+    if (level === 2) levelTitle = "Python Apprentice";
+    else if (level === 3) levelTitle = "ML Explorer";
+    else if (level === 4) levelTitle = "Neural Knight";
+    else if (level >= 5) levelTitle = "Sandbox Wizard";
+
+    const badges = [
+      { id: 'first_step', name: 'First Step', desc: 'Read your first lesson milestone', icon: Award, unlocked: totalCompleted > 0, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/30' },
+      { id: 'streak_starter', name: 'Streak Master', desc: 'Hold an active streak', icon: Zap, unlocked: streakCount >= 1 || bestStreak >= 1, color: 'text-orange-500 bg-orange-50 dark:bg-orange-950/30' },
+      { id: 'quiz_conqueror', name: 'Quiz Champion', desc: 'Complete 3 learning milestones', icon: Star, unlocked: totalCompleted >= 3, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30' },
+      { id: 'ai_specialist', name: 'AI Specialist', desc: 'Complete 8 learning milestones', icon: Brain, unlocked: totalCompleted >= 8, color: 'text-pink-500 bg-pink-50 dark:bg-pink-950/30' }
+    ];
 
     return {
       totalCompleted,
-      streakCount: streakInfo.count || 0,
-      bestStreak: streakInfo.bestStreak || 0
+      streakCount,
+      bestStreak,
+      xp,
+      level,
+      currentXp,
+      xpPerLevel,
+      levelTitle,
+      badges
     };
   };
   
@@ -120,7 +147,7 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
           : 'bg-background dark:bg-slate-950 border-b border-border dark:border-slate-900'
         }`}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
@@ -501,91 +528,149 @@ const Navbar = ({ onNavigate, isAuthenticated, onLogout }) => {
     {/* Profile Detail Modal */}
     {isProfileModalOpen && (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 border-2 border-border dark:border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative transition-all duration-300 animate-in zoom-in-95 duration-200">
+        <div className="bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-2xl relative transition-all duration-300 animate-in zoom-in-95 duration-250 overflow-hidden">
+          
+          {/* Decorative Background Glow */}
+          <div className="absolute -top-12 -left-12 w-36 h-36 bg-primary/10 dark:bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-12 -right-12 w-36 h-36 bg-indigo-500/10 dark:bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+
           {/* Close Button */}
           <button
             onClick={() => setIsProfileModalOpen(false)}
-            className="absolute top-4 right-4 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 transition-colors p-1 cursor-pointer"
+            className="absolute top-4 right-4 text-text-secondary dark:text-slate-400 hover:text-text-primary dark:hover:text-slate-100 transition-colors p-1 cursor-pointer z-10"
           >
             <X size={20} />
           </button>
 
           {/* Profile Header */}
-          <div className="flex flex-col items-center text-center mb-6">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-tr from-primary to-indigo-500 flex items-center justify-center border-2 border-indigo-100 dark:border-indigo-900/30 mb-4 shadow-lg">
-              <User size={38} className="text-white" />
-            </div>
-            <h3 className="text-2xl font-black text-text-primary dark:text-slate-100 tracking-tight">
-              {localStorage.getItem('userName') || 'Learner'}
-            </h3>
-            <p className="text-xs font-semibold text-text-secondary dark:text-slate-400 mt-1 flex items-center justify-center gap-1">
-              <Mail size={12} className="text-slate-400" />
-              {localStorage.getItem('userEmail') || 'No email associated'}
-            </p>
-          </div>
+          {(() => {
+            const stats = getProfileStats();
+            const xpPercentage = Math.round((stats.currentXp / stats.xpPerLevel) * 100);
 
-          {/* Stats Section */}
-          <div className="space-y-4 pt-4 border-t border-border dark:border-slate-800/80">
-            <h4 className="text-xs font-bold text-text-primary dark:text-slate-350 uppercase tracking-wider mb-2">
-              Learning Achievements
-            </h4>
-            
-            {(() => {
-              const stats = getProfileStats();
-              return (
-                <div className="grid grid-cols-1 gap-3">
-                  {/* Active Streak */}
-                  <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800/80 rounded-2xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-orange-50 dark:bg-orange-950/30 flex items-center justify-center border border-orange-100 dark:border-orange-900/30">
-                        <Flame size={18} className="text-orange-600 dark:text-orange-400 fill-orange-600 dark:fill-orange-400" />
-                      </div>
-                      <span className="text-sm font-bold text-text-primary dark:text-slate-200">Active Streak</span>
+            return (
+              <div className="space-y-6">
+                <div className="flex flex-col items-center text-center">
+                  <div className="relative">
+                    <div className="h-20 w-20 rounded-full bg-gradient-to-tr from-primary to-indigo-500 flex items-center justify-center border-2 border-indigo-100 dark:border-indigo-900/30 shadow-lg">
+                      <User size={38} className="text-white" />
                     </div>
-                    <span className="text-sm font-black text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-950/40 px-3 py-1 rounded-xl border border-orange-100 dark:border-orange-900/30">
-                      {stats.streakCount} {stats.streakCount === 1 ? 'Day' : 'Days'}
+                    {/* Level Badge Overlay */}
+                    <span className="absolute -bottom-1 -right-1 bg-primary text-white text-[10px] font-black h-6 w-6 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md">
+                      {stats.level}
                     </span>
                   </div>
-
-                  {/* Best Streak */}
-                  <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800/80 rounded-2xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center border border-amber-100 dark:border-amber-900/30">
-                        <Trophy size={18} className="text-amber-500 dark:text-amber-400 fill-amber-500 dark:fill-amber-400" />
-                      </div>
-                      <span className="text-sm font-bold text-text-primary dark:text-slate-200">Best Streak</span>
-                    </div>
-                    <span className="text-sm font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 rounded-xl border border-amber-100 dark:border-amber-900/30">
-                      {stats.bestStreak} {stats.bestStreak === 1 ? 'Day' : 'Days'}
+                  
+                  <h3 className="text-2xl font-black text-text-primary dark:text-slate-100 tracking-tight mt-4">
+                    {localStorage.getItem('userName') || 'Learner'}
+                  </h3>
+                  
+                  {/* Level title and email */}
+                  <div className="flex flex-col items-center mt-1">
+                    <span className="text-[10px] font-black tracking-wider uppercase bg-primary/10 dark:bg-indigo-950/40 text-primary dark:text-indigo-400 px-2.5 py-1 rounded-full border border-primary/20 flex items-center gap-1">
+                      <Sparkles size={10} className="fill-current" />
+                      {stats.levelTitle}
                     </span>
-                  </div>
-
-                  {/* Completed Steps */}
-                  <div className="flex items-center justify-between p-3.5 bg-slate-50 dark:bg-slate-950 border border-border dark:border-slate-800/80 rounded-2xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center border border-indigo-100 dark:border-indigo-900/30">
-                        <BookOpen size={18} className="text-primary dark:text-indigo-400" />
-                      </div>
-                      <span className="text-sm font-bold text-text-primary dark:text-slate-200">Completed Steps</span>
-                    </div>
-                    <span className="text-sm font-black text-primary dark:text-indigo-450 bg-indigo-50 dark:bg-indigo-950/40 px-3 py-1 rounded-xl border border-indigo-100 dark:border-indigo-900/30">
-                      {stats.totalCompleted} {stats.totalCompleted === 1 ? 'Milestone' : 'Milestones'}
+                    <span className="text-xs font-semibold text-text-secondary dark:text-slate-400 mt-2 flex items-center gap-1">
+                      <Mail size={12} className="text-slate-450" />
+                      {localStorage.getItem('userEmail') || 'No email associated'}
                     </span>
                   </div>
                 </div>
-              );
-            })()}
-          </div>
 
-          {/* Action button */}
-          <div className="mt-6">
-            <button
-              onClick={() => setIsProfileModalOpen(false)}
-              className="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer text-center text-sm"
-            >
-              CLOSE PROFILE
-            </button>
-          </div>
+                {/* Level / XP Progress bar */}
+                <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800/80 p-4 rounded-2xl space-y-2">
+                  <div className="flex justify-between text-xs font-bold">
+                    <span className="text-text-secondary dark:text-slate-400">Level {stats.level} Progress</span>
+                    <span className="text-text-primary dark:text-slate-200">{stats.currentXp} / {stats.xpPerLevel} XP</span>
+                  </div>
+                  <div className="h-3 bg-slate-200 dark:bg-slate-850 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-gradient-to-r from-primary to-indigo-500 rounded-full transition-all duration-500"
+                      style={{ width: `${xpPercentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Learning Stats Grid */}
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl">
+                    <div className="text-[10px] font-bold text-text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Active
+                    </div>
+                    <div className="text-base font-black text-orange-500 flex items-center justify-center gap-0.5">
+                      <Flame size={14} className="fill-current" />
+                      {stats.streakCount}d
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl">
+                    <div className="text-[10px] font-bold text-text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Best
+                    </div>
+                    <div className="text-base font-black text-amber-500 flex items-center justify-center gap-0.5">
+                      <Trophy size={14} className="fill-current" />
+                      {stats.bestStreak}d
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-slate-950 border border-slate-200/50 dark:border-slate-800/60 rounded-2xl">
+                    <div className="text-[10px] font-bold text-text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Milestones
+                    </div>
+                    <div className="text-base font-black text-primary dark:text-indigo-400 flex items-center justify-center gap-0.5">
+                      <BookOpen size={14} />
+                      {stats.totalCompleted}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Achievements / Badge Showcase */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold text-text-primary dark:text-slate-350 uppercase tracking-wider">
+                    Badge Achievements
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    {stats.badges.map((badge) => {
+                      const BadgeIcon = badge.icon;
+                      return (
+                        <div
+                          key={badge.id}
+                          className={`p-3 border rounded-2xl flex items-start gap-2.5 transition-all ${
+                            badge.unlocked
+                              ? 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm'
+                              : 'bg-slate-100/50 dark:bg-slate-950/40 border-slate-200/40 dark:border-slate-900/60 opacity-40 grayscale'
+                          }`}
+                        >
+                          <div className={`p-1.5 rounded-xl shrink-0 ${badge.color}`}>
+                            <BadgeIcon size={16} className={badge.unlocked ? 'fill-current' : ''} />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-xs font-bold text-text-primary dark:text-slate-250 leading-tight">
+                              {badge.name}
+                            </p>
+                            <p className="text-[9px] font-semibold text-text-secondary dark:text-slate-450 leading-tight mt-0.5">
+                              {badge.desc}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Action button */}
+                <div className="pt-2">
+                  <button
+                    onClick={() => setIsProfileModalOpen(false)}
+                    className="w-full bg-primary hover:bg-indigo-700 text-white font-bold py-3 rounded-xl shadow-[0_4px_0_0_rgba(67,56,202,1)] hover:shadow-[0_4px_0_0_rgba(55,48,163,1)] active:shadow-none active:translate-y-1 transition-all cursor-pointer text-center text-sm"
+                  >
+                    CLOSE PROFILE
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     )}

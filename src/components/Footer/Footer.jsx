@@ -4,7 +4,7 @@ import { Flame } from 'lucide-react';
 const Footer = () => {
   return (
     <footer className="bg-white dark:bg-slate-950 pt-12 pb-8 border-t border-border dark:border-slate-900 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-6 sm:px-8 lg:px-12">
 
         {/* Brand Section */}
         <div className="mb-10">

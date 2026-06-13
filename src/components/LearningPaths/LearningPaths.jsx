@@ -68,7 +68,7 @@ const LearningPaths = ({ onCardClick, userName }) => {
   }));
   return (
     <section className="pt-12 pb-24 bg-background dark:bg-slate-950 transition-colors duration-300" id="learn">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-6 sm:px-8 lg:px-12">
         
         {/* Header and Streak Section (Side-by-Side Flex Layout) */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 mb-16 pb-8 border-b border-slate-100 dark:border-slate-800/60">

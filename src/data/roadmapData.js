@@ -36,6 +36,12 @@ function buildRoadmapData() {
         id: topic.id,
         title: topic.title,
         study: { ...topic.study },
+        subtopics: topic.subtopics
+          ? topic.subtopics.map((st) => ({
+              ...st,
+              subsubtopics: st.subsubtopics ? st.subsubtopics.map((sst) => ({ ...sst })) : undefined,
+            }))
+          : undefined,
         quiz: [],
       };
 

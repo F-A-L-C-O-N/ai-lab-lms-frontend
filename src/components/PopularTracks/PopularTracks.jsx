@@ -18,7 +18,7 @@ const tracks = getPopularTracks();
 const PopularTracks = ({ onCardClick }) => {
   return (
     <section className="py-24 bg-white dark:bg-slate-900 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-full mx-auto px-6 sm:px-8 lg:px-12">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12">
           <div>
             <h2 className="text-4xl font-extrabold text-text-primary dark:text-slate-100 mb-4 tracking-tight">Trending ML Algorithms</h2>

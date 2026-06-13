@@ -15,11 +15,7 @@ export const topicsData = {
         heading: 'What is Machine Learning?',
         content:
           'Machine learning is a subfield of AI that enables systems to learn from data patterns instead of following explicit, hard-coded rules. Algorithms are trained on input features to predict outputs or find structures in data.',
-        highlights: [
-          'Supervised: Labeled target outputs',
-          'Unsupervised: Grouping unlabeled patterns',
-          'Reinforcement: Trial-and-error rewards',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
     {
@@ -42,10 +38,7 @@ def min_max_normalize(data):
         heading: 'Overfitting & Generalization',
         content:
           'In Machine Learning, we want our models to generalize well to new, unseen data. If a model fits the training data too closely, it might learn random noise instead of the general pattern.',
-        highlights: [
-          'Overfitting: High training accuracy, low validation accuracy',
-          'Underfitting: Low training accuracy, low validation accuracy',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
   ],
@@ -58,10 +51,7 @@ def min_max_normalize(data):
         heading: 'The Artificial Perceptron',
         content:
           'The perceptron is the basic building block of deep learning. It multiplies inputs by weights, sums them with a bias, and passes the result through an activation function.',
-        highlights: [
-          'Weighted Sum: z = w1*x1 + w2*x2 + ... + b',
-          'Activation Function: y = f(z)',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
     {
@@ -83,10 +73,7 @@ def relu(x):
         heading: 'Backpropagation',
         content:
           'Backpropagation computes the gradient of the loss function with respect to each weight in the network, starting from the output layer and propagating backward using the chain rule.',
-        highlights: [
-          'Loss function calculates prediction error',
-          'Chain rule enables gradient calculation across multiple layers',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
   ],
@@ -112,10 +99,7 @@ tokens = text.lower().split()
         heading: 'Self-Attention Mechanism',
         content:
           'Modern language models use the self-attention mechanism to weigh the importance of different words in a sentence relative to each other, maintaining contextual memory over long texts.',
-        highlights: [
-          'Queries (Q), Keys (K), Values (V) matrices',
-          'Attention score calculated via dot-product scaling',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
   ],
@@ -128,10 +112,7 @@ tokens = text.lower().split()
         heading: 'Linear Regression',
         content:
           'Linear Regression fits a straight line to data points. The formula represents a dependent variable as a combination of independent variables. We use Mean Squared Error (MSE) as a cost function to minimize errors.',
-        highlights: [
-          'Formula: Y = m * X + C',
-          'Cost Function: 1/N * sum((Y_actual - Y_predicted)^2)',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
     {
@@ -157,10 +138,7 @@ def sigmoid(z):
         heading: 'Decision Tree Splitting Criteria',
         content:
           'Decision trees partition features based on boundary splits that maximize Information Gain. We measure node impurity using formulas like Gini Impurity or Entropy.',
-        highlights: [
-          'Entropy measures uncertainty in the subset',
-          'Gini Impurity checks class diversity in split samples',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
     {
@@ -185,11 +163,7 @@ majority_vote = max(set(predictions), key=predictions.count)`,
         heading: 'Maximum Margin Hyperplanes',
         content:
           "SVM attempts to draw a boundary (hyperplane) that is as far as possible from the nearest training points of each class. These nearest points are called 'support vectors'.",
-        highlights: [
-          'Margin: Distance between border and support vectors',
-          'Hard Margin: Linear separation',
-          'Soft Margin: Allows some misclassification',
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
     {
@@ -214,10 +188,7 @@ def rbf_kernel(x1, x2, gamma=0.1):
         heading: 'Centroid-Based Grouping',
         content:
           "K-Means groups data points into 'K' clusters. It initializes K random center points (centroids), assigns points to their nearest centroid, recalculates the centroid coordinates, and repeats until convergence.",
-        highlights: [
-          'Distance Metric: Usually Euclidean Distance',
-          "Elbow Method: Tool to choose optimal 'K' cluster counts",
-        ],
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
       },
     },
     {
@@ -233,6 +204,190 @@ def update_centroids(points, labels, k):
       },
     },
   ],
+
+  'Python Programming': [
+    {
+      id: 1,
+      title: 'Python Fundamentals',
+      study: {
+        heading: 'Python Fundamentals',
+        content: 'Python is a high-level, interpreted programming language known for its readability and simplicity. It supports multiple programming paradigms, including object-oriented, imperative, and functional programming.',
+        YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      },
+      subtopics: [
+        {
+          id: '1.1',
+          title: 'Introduction',
+          heading: 'Introduction to Python',
+          content: 'Python was created by Guido van Rossum and released in 1991. Its design philosophy emphasizes code readability, and its syntax allows programmers to express concepts in fewer lines of code than in languages like C++ or Java.',
+          YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          code: `# Hello World in Python
+print("Hello, World!")`
+        },
+        {
+          id: '1.2',
+          title: 'Variables',
+          heading: 'Python Variables & Assignment',
+          content: 'Variables are containers for storing data values. In Python, variables are created when you assign a value to them. You do not need to declare their type, and they can change type dynamically.',
+          YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          code: `# Variable assignment examples
+x = 5
+y = "John"
+print(x)
+print(y)`,
+          subsubtopics: [
+            {
+              id: '1.2.1',
+              title: 'Declaration & Assignment',
+              heading: 'Variable Declaration & Assignment',
+              content: 'In Python, a variable is created the moment you first assign a value to it. There is no declaration keyword like var, let, or const.',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `x = 5
+y = "Hello"
+print(x, y)`
+            },
+            {
+              id: '1.2.2',
+              title: 'Dynamic Typing',
+              heading: 'Dynamic Typing in Python',
+              content: 'Python is dynamically typed. This means you do not need to specify the type of a variable when you declare it, and variables can change type even after they have been set.',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `x = 100      # x is an int
+x = "changed"  # x is now a str
+print(x)`
+            },
+            {
+              id: '1.2.3',
+              title: 'Naming Rules',
+              heading: 'Python Variable Naming Rules',
+              content: 'Variable names can be short (like x and y) or more descriptive (age, carname, total_volume). Rules for Python variables:\n- Must start with a letter or underscore\n- Cannot start with a number\n- Can only contain alpha-numeric characters and underscores (A-z, 0-9, and _)\n- Are case-sensitive',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `# Valid names
+my_name = "Alice"
+_id = 99
+
+# Invalid names (will raise SyntaxError)
+# 2name = "Bob"
+# my-id = 100`
+            }
+          ]
+        },
+        {
+          id: '1.3',
+          title: 'Operators',
+          heading: 'Python Operators',
+          content: 'Operators are used to perform operations on variables and values. Python divides operators into groups: Arithmetic (+, -, *, /), Assignment (=, +=, -=), Comparison (==, !=, >, <), and Logical (and, or, not).',
+          YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          code: `# Operator examples
+a = 10
+b = 3
+print(a + b)  # Arithmetic: 13
+print(a > b)  # Comparison: True
+print(a > 5 and b < 5)  # Logical: True`,
+          subsubtopics: [
+            {
+              id: '1.3.1',
+              title: 'Arithmetic Operators',
+              heading: 'Arithmetic Operators',
+              content: 'Arithmetic operators are used with numeric values to perform common mathematical operations (+, -, *, /, %, **, //).',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `a = 10
+b = 3
+print(a / b)   # Division: 3.3333333333333335
+print(a // b)  # Floor Division: 3
+print(a % b)   # Modulus: 1
+print(a ** b)  # Exponentiation: 1000`
+            },
+            {
+              id: '1.3.2',
+              title: 'Comparison Operators',
+              heading: 'Comparison Operators',
+              content: 'Comparison operators are used to compare two values, returning a Boolean value (True or False) based on the result.',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `x = 5
+y = 10
+print(x == y)  # False
+print(x != y)  # True
+print(x < y)   # True`
+            },
+            {
+              id: '1.3.3',
+              title: 'Logical Operators',
+              heading: 'Logical Operators',
+              content: 'Logical operators are used to combine conditional statements (and, or, not).',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `x = 5
+print(x > 3 and x < 10)  # True
+print(x > 10 or x < 4)   # False
+print(not(x > 3 and x < 10))  # False`
+            }
+          ]
+        },
+        {
+          id: '1.4',
+          title: 'Keywords',
+          heading: 'Python Keywords',
+          content: 'Keywords are reserved words in Python that have special meanings and purposes. They cannot be used as variable names, function names, or any other identifiers.',
+          YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          code: `# List of common keywords
+is_active = True
+if is_active:
+    print("Keyword 'True' is used here")`
+        },
+        {
+          id: '1.5',
+          title: 'Datatypes',
+          heading: 'Python Data Types',
+          YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+          code: `# Data type examples
+name = "Alice"      # str
+age = 25            # int
+fruits = ["apple", "banana"]  # list
+person = {"name": "Alice"}    # dict
+print(type(name))
+print(type(fruits))`,
+          subsubtopics: [
+            {
+              id: '1.5.1',
+              title: 'Numeric Types',
+              heading: 'Python Numeric Types',
+              content: 'There are three distinct numeric types in Python: int (integers), float (floating-point numbers), and complex (complex numbers). They are created when a value is assigned to a variable.',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `x = 1    # int
+y = 2.8  # float
+z = 1j   # complex
+print(type(x), type(y), type(z))`
+            },
+            {
+              id: '1.5.2',
+              title: 'Sequence Types',
+              heading: 'Python Lists and Tuples',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `my_list = ["apple", "banana", "cherry"]
+my_tuple = ("apple", "banana", "cherry")
+my_list[0] = "strawberry"  # Works!
+# my_tuple[0] = "strawberry" # Raises TypeError!
+print(my_list, my_tuple)`
+            },
+            {
+              id: '1.5.3',
+              title: 'Mapping Types',
+              heading: 'Python Dictionaries',
+              content: 'Dictionaries are used to store data values in key:value pairs. A dictionary is a collection which is ordered, changeable, and does not allow duplicates.',
+              YT_link: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+              code: `thisdict = {
+  "brand": "Ford",
+  "model": "Mustang",
+  "year": 1964
+}
+print(thisdict["brand"])
+print(thisdict.get("model"))`
+            }
+          ]
+        }
+      ]
+    }
+  ]
 };
 
 // ─── Learning Paths card definitions (used by LearningPaths component) ───────
@@ -277,6 +432,12 @@ export const learningPaths = [
     name: 'Generative AI & LLMs',
     color:
       'bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
+    progress: 0,
+  },
+  {
+    id: 7,
+    name: 'Python Programming',
+    color: 'bg-yellow-100 dark:bg-yellow-950/40 text-yellow-600 dark:text-yellow-400',
     progress: 0,
   },
 ];
